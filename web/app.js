@@ -508,48 +508,63 @@ function promptPregunta(nodo, pregunta) {
   return contextoNodo(nodo) + `\nMi pregunta sobre esta idea: ${pregunta}`;
 }
 
-// Copia texto al portapapeles. navigator.clipboard solo funciona en https o
-// localhost; en http (ej. probando desde el celular por IP) usamos el método antiguo.
+// Copia SÍNCRONA (termina antes de seguir): un <textarea> oculto + execCommand.
+// Es el método antiguo, pero tiene una ventaja clave aquí: funciona dentro del
+// mismo clic, ANTES de abrir otra pestaña. Si abriéramos primero la pestaña, la
+// página perdería el foco y el navegador bloquearía el acceso al portapapeles.
+function copiarSincrono(texto) {
+  const area = document.createElement('textarea');
+  area.value = texto;
+  area.readOnly = true;                 // evita que se abra el teclado en el celular
+  area.style.position = 'fixed';
+  area.style.opacity = '0';
+  area.style.fontSize = '16px';         // evita el zoom automático en iPhone
+  document.body.appendChild(area);
+  area.select();
+  area.setSelectionRange(0, texto.length); // iPhone necesita la selección explícita
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch { ok = false; }
+  area.remove();
+  return ok;
+}
+
+// Copia "moderna" (navigator.clipboard). Solo funciona en https o localhost.
 async function copiar(texto) {
+  if (copiarSincrono(texto)) return true;
   try {
     await navigator.clipboard.writeText(texto);
     return true;
   } catch {
-    const area = document.createElement('textarea');
-    area.value = texto;
-    area.style.position = 'fixed';
-    area.style.opacity = '0';
-    document.body.appendChild(area);
-    area.select();
-    const ok = document.execCommand('copy');
-    area.remove();
-    return ok;
+    return false;
   }
 }
 
 let temporizadorAviso;
-function avisar(texto) {
+function avisar(texto, ms = 2800) {
   const aviso = el('aviso');
   aviso.textContent = texto;
   aviso.hidden = false;
   clearTimeout(temporizadorAviso);
-  temporizadorAviso = setTimeout(() => { aviso.hidden = true; }, 2800);
+  temporizadorAviso = setTimeout(() => { aviso.hidden = true; }, ms);
 }
 
-// Abre claude.ai con el prompt ya escrito (?q=...). Además lo copiamos, por si
-// el prompt es muy largo para una URL o claude.ai no lo rellena: basta pegarlo.
-const LARGO_MAXIMO_URL = 6000;
-async function abrirEnClaude(prompt) {
-  // window.open primero (antes de cualquier await): si no, el navegador del
-  // celular puede bloquearlo como pop-up no solicitado.
-  const codificado = encodeURIComponent(prompt);
-  const url = codificado.length <= LARGO_MAXIMO_URL
-    ? `https://claude.ai/new?q=${codificado}`
-    : 'https://claude.ai/new';
-  window.open(url, '_blank', 'noopener');
-  const copiado = await copiar(prompt);
-  if (codificado.length > LARGO_MAXIMO_URL) {
-    avisar(copiado ? 'Prompt copiado: pégalo en Claude' : 'No se pudo copiar el prompt');
+// Copia el prompt y abre un chat NUEVO Y VACÍO en claude.ai para pegarlo.
+//
+// ¿Por qué no lo mandamos escrito en el link (claude.ai/new?q=...)? Porque
+// claude.ai muestra una advertencia de seguridad con esos links: cualquier
+// página podría usarlos para meterle a Claude un prompt malicioso escondido
+// ("prompt injection"). Pegándolo tú, ves exactamente lo que vas a enviar.
+function abrirEnClaude(prompt) {
+  const copiado = copiarSincrono(prompt); // primero copiar (ver arriba)
+  window.open('https://claude.ai/new', '_blank', 'noopener');
+  if (copiado) {
+    avisar('Prompt copiado ✓ Pégalo en Claude (Ctrl+V o mantener presionado → Pegar)', 6000);
+  } else {
+    // Último intento con el método moderno; si falla, el usuario usa "Copiar prompt"
+    navigator.clipboard?.writeText(prompt).then(
+      () => avisar('Prompt copiado ✓ Pégalo en Claude', 6000),
+      () => avisar('No se pudo copiar: usa el botón "Copiar prompt"', 6000),
+    );
   }
 }
 

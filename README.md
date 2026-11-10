@@ -124,9 +124,13 @@ aprox. US$0,03–0,10 según el largo (el script muestra el costo exacto).
 
 **Desde la web (gratis, sin API key):** al abrir un nodo, la sección *Desarrollar con Claude*
 arma un prompt con tu perfil, la idea y sus conexiones:
-- **Abrir en Claude ↗** abre claude.ai con el prompt escrito (y lo copia, por si acaso).
+- **Copiar y abrir Claude ↗** copia el prompt y abre un chat nuevo: lo pegas, lo revisas y lo envías.
 - **Copiar prompt** para pegarlo donde quieras (Claude, Claude Code…).
-- **Preguntar ↗** abre Claude con tu pregunta sobre esa idea.
+- **Preguntar ↗** hace lo mismo con tu pregunta sobre esa idea.
+
+> No usamos links `claude.ai/new?q=...` con el prompt adentro: claude.ai muestra una
+> advertencia con esos links, porque una página maliciosa podría usarlos para meterle a
+> Claude un prompt escondido (*prompt injection*). Pegándolo tú, ves lo que envías.
 
 > La web no usa la API a propósito: en una página pública la API key quedaría visible.
 
