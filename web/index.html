@@ -24,6 +24,68 @@
     <span class="solo-tactil">Un dedo para rotar · pellizca para zoom · toca un nodo</span>
   </p>
 
+  <!-- Botón para abrir la hoja "Agregar fuente" -->
+  <button id="btn-agregar" type="button" class="boton-flotante">＋ Fuente</button>
+
+  <!-- Hoja "Agregar fuente": Claude (en tu cuenta de claude.ai) lee el link o el
+       PDF, y la página guarda el resultado en tu repositorio de GitHub. -->
+  <aside id="agregar" class="hoja" aria-hidden="true" aria-labelledby="agregar-titulo">
+    <button id="cerrar-agregar" class="cerrar" type="button" aria-label="Cerrar">✕</button>
+    <h2 id="agregar-titulo">Agregar fuente</h2>
+    <p class="ayuda-texto">Claude lee un artículo, video o PDF con tu cuenta de claude.ai y lo
+      resume pensando en tu carrera. La fuente se guarda en tu repositorio y el grafo se
+      actualiza solo en unos minutos.</p>
+
+    <!-- Paso 1: solo aparece si este dispositivo aún no está conectado -->
+    <section id="paso-github">
+      <h3>1 · Conectar con GitHub (una vez)</h3>
+      <p class="ayuda-texto">Para guardar en tu repositorio, la página necesita un <b>token</b>
+        (una llave con permisos limitados). Se guarda solo en este navegador.</p>
+      <ol class="ayuda-texto pasos">
+        <li>Abre <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer">crear token de GitHub ↗</a></li>
+        <li><b>Repository access</b> → <i>Only select repositories</i> → <code id="nombre-repo">segundo-cerebro</code></li>
+        <li><b>Permissions</b> → <b>Contents</b> → <i>Read and write</i></li>
+        <li>Genera el token, cópialo y pégalo aquí:</li>
+      </ol>
+      <form id="form-token" class="pregunta">
+        <input id="input-token" type="password" placeholder="github_pat_…" autocomplete="off"
+               aria-label="Token de GitHub">
+        <button type="submit" class="boton">Conectar</button>
+      </form>
+    </section>
+    <p id="estado-github" class="ayuda-texto" hidden>
+      ✓ Conectado a GitHub · <button id="btn-desconectar" type="button" class="enlace">desconectar</button>
+    </p>
+
+    <section>
+      <h3><span class="num-paso">2</span> · ¿Qué quieres agregar?</h3>
+      <div class="selector" role="radiogroup" aria-label="Tipo de fuente">
+        <label><input type="radio" name="tipo-fuente" value="link" checked> Link</label>
+        <label><input type="radio" name="tipo-fuente" value="pdf"> PDF</label>
+      </div>
+      <input id="input-url" type="url" class="campo" inputmode="url"
+             placeholder="https://… (artículo o video de YouTube)" aria-label="Link de la fuente">
+      <p id="nota-youtube" class="ayuda-texto nota" hidden>⚠ Con videos de YouTube, Claude a veces
+        no logra leer la transcripción. Si te responde con un error, usa la terminal:
+        <code>python scripts/agregar_fuente.py &lt;link&gt; --manual</code></p>
+      <p id="nota-pdf" class="ayuda-texto nota" hidden>📎 En el chat de Claude, adjunta el PDF
+        (clip o arrastrándolo) junto con el prompt. Si el PDF está en internet, puedes poner su
+        link arriba (opcional).</p>
+      <button id="btn-prompt-fuente" type="button" class="boton boton-principal ancho">
+        Copiar prompt y abrir Claude ↗</button>
+    </section>
+
+    <section>
+      <h3><span class="num-paso">3</span> · Pega la respuesta de Claude</h3>
+      <textarea id="input-respuesta" class="campo" rows="6"
+                placeholder='Copia el bloque JSON que respondió Claude y pégalo aquí: { "titulo": … }'
+                aria-label="Respuesta de Claude"></textarea>
+      <button id="btn-guardar-fuente" type="button" class="boton boton-principal ancho">
+        Guardar en el cerebro</button>
+      <p id="resultado-fuente" class="ayuda-texto" role="status"></p>
+    </section>
+  </aside>
+
   <!-- Aviso breve ("Prompt copiado", etc.) -->
   <div id="aviso" role="status" hidden></div>
 
@@ -31,8 +93,8 @@
   <div id="error" hidden></div>
 
   <!-- Panel de detalle del nodo seleccionado -->
-  <aside id="panel" aria-hidden="true">
-    <button id="cerrar" type="button" aria-label="Cerrar panel">✕</button>
+  <aside id="panel" class="hoja" aria-hidden="true">
+    <button id="cerrar" class="cerrar" type="button" aria-label="Cerrar panel">✕</button>
     <span id="panel-tipo" class="chip"></span>
     <h2 id="panel-titulo"></h2>
     <p id="panel-meta"></p>

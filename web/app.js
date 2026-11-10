@@ -11,6 +11,8 @@
 import ForceGraph3D from 'https://cdn.jsdelivr.net/npm/3d-force-graph@1.80.1/+esm';
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.186.1/+esm';
 import { UnrealBloomPass } from 'https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/postprocessing/UnrealBloomPass.js/+esm';
+// Nuestro módulo para agregar fuentes desde la web (ver agregar.js)
+import { iniciarAgregar } from './agregar.js';
 
 // --- Configuración visual ------------------------------------
 
@@ -309,6 +311,7 @@ function seleccionarNodo(nodo) {
 
   refrescarEstilos();
   enfocarCamara(nodo);
+  hojaAgregar?.cerrar(); // si estaba abierta la hoja "Agregar fuente", la cerramos
   mostrarPanel(nodo);
 }
 
@@ -646,6 +649,7 @@ function iconoEstrella(color) {
 
 function construirLeyenda(nodos) {
   const leyenda = el('leyenda');
+  leyenda.replaceChildren(); // se vuelve a construir al agregar un nodo
   for (const [tipo, color] of Object.entries(COLORES)) {
     const cantidad = nodos.filter((n) => n.tipo === tipo).length;
     const li = document.createElement('li');
@@ -684,5 +688,27 @@ async function cargar() {
     caja.hidden = false;
   }
 }
+
+// --- Agregar fuentes desde la web ----------------------------------
+
+// Agrega un nodo al grafo en pantalla sin recargar (todavía sin enlaces: los
+// calcula la GitHub Action con los embeddings y aparecen al recargar).
+function agregarNodoLocal(nodo) {
+  nodosPorId.set(nodo.id, nodo);
+  vecinosPorId.set(nodo.id, new Set());
+  enlacesPorId.set(nodo.id, new Set());
+  const { nodes, links } = Grafo.graphData();
+  Grafo.graphData({ nodes: [...nodes, nodo], links });
+  construirLeyenda([...nodosPorId.values()]);
+}
+
+const hojaAgregar = iniciarAgregar({
+  obtenerMeta: () => meta,
+  obtenerNodos: () => [...nodosPorId.values()],
+  agregarNodoLocal,
+  alAbrir: limpiarSeleccion,
+  copiarSincrono,
+  avisar,
+});
 
 cargar();
