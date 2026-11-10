@@ -16,6 +16,10 @@
 
 * { box-sizing: border-box; }
 
+/* El atributo HTML "hidden" debe ganar siempre: si no, una regla como
+   display: inline-block lo anula y el elemento se ve aunque esté "oculto". */
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   height: 100%;
@@ -60,11 +64,12 @@ html, body {
   color: var(--texto-suave);
 }
 #leyenda li { display: flex; align-items: center; gap: 6px; }
-.punto {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
+/* Estrella pequeña con brillo (text-shadow usa el color actual del texto) */
+.icono-estrella {
   flex: none;
+  font-size: 14px;
+  line-height: 1;
+  text-shadow: 0 0 6px currentColor, 0 0 12px currentColor;
 }
 
 /* ---------- Ayuda de controles ---------- */
@@ -212,7 +217,7 @@ html, body {
     bottom: 0;
     width: 100%;
     height: auto;
-    max-height: 60dvh; /* deja ver el grafo arriba */
+    max-height: 50dvh; /* deja ver el grafo arriba */
     padding-bottom: max(32px, env(safe-area-inset-bottom));
     border-left: 0;
     border-top: 1px solid var(--borde);

@@ -4,6 +4,14 @@
 // la selección de nodos (panel de detalle + resaltado de conexiones).
 // ============================================================
 
+// --- Librerías (módulos ES desde CDN) -------------------------
+// Importamos Three.js en la MISMA versión exacta que usa 3d-force-graph
+// por dentro (0.186.1). Como la URL es idéntica, el navegador carga una sola
+// copia de Three y nuestras estrellas son compatibles con el resto de la escena.
+import ForceGraph3D from 'https://cdn.jsdelivr.net/npm/3d-force-graph@1.80.1/+esm';
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.186.1/+esm';
+import { UnrealBloomPass } from 'https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/postprocessing/UnrealBloomPass.js/+esm';
+
 // --- Configuración visual ------------------------------------
 
 // Un color por tipo de nodo (los mismos de style.css)
@@ -16,7 +24,7 @@ const NOMBRES_TIPO = { idea: 'Idea', fuente: 'Fuente', fusionada: 'Fusionada' };
 const COLOR_DESCONOCIDO = '#888888';
 
 const OPACIDAD_ATENUADA = 0.12; // qué tan "apagado" queda lo que no está conectado
-const DISTANCIA_CAMARA = 90;    // a qué distancia queda la cámara al enfocar un nodo
+const DISTANCIA_CAMARA = 60;    // distancia al enfocar un nodo sin conexiones
 
 // --- Estado ---------------------------------------------------
 
@@ -82,28 +90,129 @@ function construirIndices(datos) {
 // --- Apariencia de nodos y enlaces ----------------------------
 // La librería llama a estas funciones por cada nodo/enlace.
 
-function colorNodo(nodo) {
-  const base = colorDeTipo(nodo.tipo);
-  if (!seleccionado || nodosResaltados.has(nodo)) return base;
-  return conAlfa(base, OPACIDAD_ATENUADA);
+// --- Estrellas tipo rosa de los vientos -----------------------
+//
+// La geometría se crea UNA vez y la comparten todas las estrellas (solo
+// cambia el material/color). Es mucho más liviano que crear una por nodo.
+//
+// Forma: un contorno de 16 vértices alternando "punta" y "valle":
+//   - 4 puntas largas (N, E, S, O) y 4 cortas (NE, SE, SO, NO).
+// Luego unimos cada borde del contorno con un vértice al frente (z>0) y otro
+// atrás (z<0). Cada punta queda con una arista central y dos caras inclinadas:
+// la luz ilumina una cara y deja la otra más oscura, como en las rosas de los
+// vientos dibujadas a mano.
+function crearGeometriaRosa() {
+  const RADIO_LARGA = 1.0;
+  const RADIO_CORTA = 0.6;
+  const RADIO_VALLE = 0.24;
+  const ALTURA = 0.32; // qué tan "abultada" es la estrella
+
+  const contorno = [];
+  for (let i = 0; i < 16; i++) {
+    const angulo = Math.PI / 2 + (i * Math.PI) / 8; // empieza apuntando arriba (norte)
+    let r;
+    if (i % 4 === 0) r = RADIO_LARGA;       // N, O, S, E
+    else if (i % 2 === 0) r = RADIO_CORTA;  // diagonales
+    else r = RADIO_VALLE;                   // valles entre puntas
+    contorno.push([Math.cos(angulo) * r, Math.sin(angulo) * r, 0]);
+  }
+
+  const frente = [0, 0, ALTURA];
+  const atras = [0, 0, -ALTURA];
+  const posiciones = [];
+  for (let i = 0; i < 16; i++) {
+    const a = contorno[i];
+    const b = contorno[(i + 1) % 16];
+    posiciones.push(...frente, ...a, ...b); // cara de adelante
+    posiciones.push(...atras, ...b, ...a);  // cara de atrás (orden inverso)
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(posiciones, 3));
+  // Sin índices, cada triángulo tiene su propia normal: caras "planas" facetadas
+  geo.computeVertexNormals();
+  return geo;
 }
 
-// Tamaño: crece con la cantidad de conexiones (los "hubs" se ven más grandes)
-function tamanoNodo(nodo) {
-  return 2 + (vecinosPorId.get(nodo.id)?.size ?? 0) * 0.8;
+const GEOMETRIA_ROSA = crearGeometriaRosa();
+// Esfera invisible para recibir clics: la estrella es delgada y en el celular
+// sería difícil de tocar; esta "zona de toque" es un poco más grande.
+const GEOMETRIA_TOQUE = new THREE.SphereGeometry(1.15, 8, 8);
+const MATERIAL_TOQUE = new THREE.MeshBasicMaterial({
+  transparent: true, opacity: 0, depthWrite: false,
+});
+
+const estrellas = new Map(); // id -> { grupo, material, fase }
+
+// Tamaño: crece un poco con las conexiones, con tope para que no sean enormes
+function tamanoEstrella(nodo) {
+  const grado = vecinosPorId.get(nodo.id)?.size ?? 0;
+  return 4 + Math.min(grado, 6) * 0.4; // entre 4 y ~6.4 unidades
+}
+
+// La librería llama esto por cada nodo para pedir su objeto 3D
+function crearEstrella(nodo) {
+  if (estrellas.has(nodo.id)) return estrellas.get(nodo.id).grupo;
+
+  const color = new THREE.Color(colorDeTipo(nodo.tipo));
+  // MeshStandardMaterial reacciona a la luz (efecto 3D) y con "emissive"
+  // además emite luz propia: así brilla incluso en la cara oscura.
+  const material = new THREE.MeshStandardMaterial({
+    color,
+    emissive: color,
+    emissiveIntensity: 0.55,
+    metalness: 0.35,
+    roughness: 0.3,
+    flatShading: true,
+    transparent: true,
+  });
+
+  const grupo = new THREE.Group();
+  grupo.add(new THREE.Mesh(GEOMETRIA_ROSA, material));
+  grupo.add(new THREE.Mesh(GEOMETRIA_TOQUE, MATERIAL_TOQUE));
+  grupo.scale.setScalar(tamanoEstrella(nodo));
+
+  // fase aleatoria: así cada estrella titila a su propio ritmo
+  estrellas.set(nodo.id, { grupo, material, fase: Math.random() * Math.PI * 2 });
+  return grupo;
+}
+
+// Aplica el resaltado a las estrellas (brillantes o atenuadas)
+function actualizarEstrellas() {
+  for (const [id, { material }] of estrellas) {
+    const activa = !seleccionado || nodosResaltados.has(nodosPorId.get(id));
+    material.opacity = activa ? 1 : OPACIDAD_ATENUADA;
+    material.userData.atenuada = !activa;
+  }
+}
+
+// Animación en cada cuadro: las estrellas miran siempre a la cámara
+// (si no, vistas de lado serían una línea) y titilan suavemente.
+function animarEstrellas(tiempo) {
+  const camara = Grafo.camera();
+  const t = tiempo / 1000;
+  for (const { grupo, material, fase } of estrellas.values()) {
+    grupo.quaternion.copy(camara.quaternion);
+    const base = material.userData.atenuada ? 0.1 : 0.55;
+    material.emissiveIntensity = base + 0.2 * Math.sin(t * 2.2 + fase);
+  }
+  requestAnimationFrame(animarEstrellas);
+
+// Para curiosear desde la consola del navegador (F12): cerebro.grafo, etc.
+window.cerebro = { grafo: Grafo, seleccionarNodo, nodosPorId };
 }
 
 function colorEnlace(enlace) {
   // Los enlaces "padre" (fusionada -> origen) van en verde suave
   const base = enlace.tipo === 'padre' ? '#4ade80' : '#c4c4d4';
-  if (!seleccionado) return conAlfa(base, 0.35);
-  return enlacesResaltados.has(enlace) ? conAlfa(base, 0.95) : conAlfa(base, 0.04);
+  if (!seleccionado) return conAlfa(base, 0.18);
+  return enlacesResaltados.has(enlace) ? conAlfa(base, 0.6) : conAlfa(base, 0.03);
 }
 
 // Grosor según la similitud: entre más parecidas las ideas, más grueso
 function anchoEnlace(enlace) {
   const s = enlace.similitud ?? 0.6;
-  const ancho = 0.3 + (s - 0.5) * 2; // ~0.5 a ~1.3
+  const ancho = 0.15 + (s - 0.5) * 1.2; // ~0.27 a ~0.75
   return enlacesResaltados.has(enlace) ? ancho * 1.8 : ancho;
 }
 
@@ -118,10 +227,7 @@ const Grafo = new ForceGraph3D(contenedor, { controlType: 'orbit' })
   .showNavInfo(false) // ocultamos la ayuda en inglés de la librería; usamos la nuestra
   .nodeId('id')
   .nodeLabel((n) => `<div class="tooltip">${escaparHtml(n.titulo)}</div>`)
-  .nodeColor(colorNodo)
-  .nodeVal(tamanoNodo)
-  .nodeOpacity(0.95)
-  .nodeResolution(16)
+  .nodeThreeObject(crearEstrella) // en vez de esferas, nuestras estrellas
   .linkColor(colorEnlace)
   .linkWidth(anchoEnlace)
   .linkOpacity(1) // la opacidad real la controla el alfa de colorEnlace
@@ -137,14 +243,45 @@ const Grafo = new ForceGraph3D(contenedor, { controlType: 'orbit' })
 // Así los grupos de ideas relacionadas se forman solos.
 Grafo.d3Force('link').distance((e) => 25 + (1 - (e.similitud ?? 0.6)) * 120);
 
-// Cuando la simulación termina por primera vez, encuadramos todo el grafo
+// Bloom: efecto de post-procesado que hace que lo brillante "irradie" un halo
+// de luz alrededor. Parámetros: intensidad, radio del halo y umbral (solo
+// brilla lo que supera ese nivel de luz, así los enlaces grises casi no brillan).
+const bloom = new UnrealBloomPass(
+  new THREE.Vector2(Math.max(window.innerWidth, 1), Math.max(window.innerHeight, 1)),
+  1.3,  // intensidad
+  0.35, // radio
+  0.35, // umbral
+);
+Grafo.postProcessingComposer().addPass(bloom);
+
+requestAnimationFrame(animarEstrellas);
+
+// Para curiosear desde la consola del navegador (F12): cerebro.grafo, etc.
+window.cerebro = { grafo: Grafo, seleccionarNodo, nodosPorId };
+
+// --- Encuadre inicial ----------------------------------------
+// La librería procesa los datos de forma asíncrona: justo después de
+// graphData() los nodos todavía no tienen posición. Si encuadramos antes de
+// tiempo, la "caja" del grafo mide ~0 y la cámara queda pegada al centro.
+// onEngineTick se dispara en cada paso de la simulación (¡incluso antes de
+// cargar los datos!). En cada paso revisamos si el grafo ya tiene un tamaño
+// real; la primera vez que sí, encuadramos. No depende de tiempos ni timers.
 let yaEncuadrado = false;
-Grafo.onEngineStop(() => {
-  if (!yaEncuadrado) {
-    Grafo.zoomToFit(800, 40);
-    yaEncuadrado = true;
-  }
+
+function encuadrar() {
+  yaEncuadrado = true;
+  Grafo.zoomToFit(800, 40);
+}
+
+Grafo.onEngineTick(() => {
+  if (yaEncuadrado) return;
+  const caja = Grafo.getGraphBbox();
+  if (!caja) return; // todavía no hay nodos
+  const tamano = Math.max(caja.x[1] - caja.x[0], caja.y[1] - caja.y[0], caja.z[1] - caja.z[0]);
+  if (tamano > 10) encuadrar();
 });
+// Respaldo: si el grafo es diminuto (ej. un solo nodo), encuadramos al final
+Grafo.onEngineStop(() => { if (!yaEncuadrado) encuadrar(); });
 
 // Ajustar el tamaño al girar el celular o cambiar el tamaño de la ventana
 window.addEventListener('resize', () => {
@@ -155,8 +292,8 @@ window.addEventListener('resize', () => {
 
 // Vuelve a pedir colores/anchos a la librería después de cambiar el resaltado
 function refrescarEstilos() {
-  Grafo.nodeColor(Grafo.nodeColor())
-    .linkColor(Grafo.linkColor())
+  actualizarEstrellas();
+  Grafo.linkColor(Grafo.linkColor())
     .linkWidth(Grafo.linkWidth());
 }
 
@@ -183,8 +320,14 @@ function limpiarSeleccion() {
   ocultarPanel();
 }
 
-// Mueve la cámara hacia el nodo, sobre la línea que va del centro al nodo
+// Mueve la cámara para encuadrar el nodo JUNTO con sus vecinos, así ves
+// de inmediato con qué se conecta. zoomToFit acepta un filtro de nodos.
 function enfocarCamara(nodo) {
+  if (vecinosPorId.get(nodo.id).size > 0) {
+    Grafo.zoomToFit(1000, 70, (n) => nodosResaltados.has(n));
+    return;
+  }
+  // Nodo sin conexiones: lo miramos de cerca, sobre la línea centro -> nodo
   const r = Math.hypot(nodo.x, nodo.y, nodo.z);
   const destino = r < 1
     ? { x: 0, y: 0, z: DISTANCIA_CAMARA } // nodo justo en el centro: evitamos dividir por ~0
@@ -257,9 +400,7 @@ function llenarLista(ul, items) {
     const boton = document.createElement('button');
     boton.type = 'button';
 
-    const punto = document.createElement('span');
-    punto.className = 'punto';
-    punto.style.background = colorDeTipo(nodo.tipo);
+    const punto = iconoEstrella(colorDeTipo(nodo.tipo));
 
     const nombre = document.createElement('span');
     nombre.className = 'nombre';
@@ -293,14 +434,21 @@ document.addEventListener('keydown', (e) => {
 
 // --- Leyenda --------------------------------------------------
 
+// Icono de estrella para la leyenda y las listas (carácter ✦ con brillo CSS)
+function iconoEstrella(color) {
+  const icono = document.createElement('span');
+  icono.className = 'icono-estrella';
+  icono.textContent = '✦';
+  icono.style.color = color;
+  return icono;
+}
+
 function construirLeyenda(nodos) {
   const leyenda = el('leyenda');
   for (const [tipo, color] of Object.entries(COLORES)) {
     const cantidad = nodos.filter((n) => n.tipo === tipo).length;
     const li = document.createElement('li');
-    const punto = document.createElement('span');
-    punto.className = 'punto';
-    punto.style.background = color;
+    const punto = iconoEstrella(color);
     li.append(punto, `${NOMBRES_TIPO[tipo]} (${cantidad})`);
     leyenda.appendChild(li);
   }
@@ -319,11 +467,10 @@ async function cargar() {
     construirLeyenda(datos.nodes);
     Grafo.graphData(datos);
 
-    // Gracias a warmupTicks las posiciones ya están casi listas: encuadramos
-    // pronto sin esperar a que la simulación termine del todo.
-    setTimeout(() => {
-      if (!yaEncuadrado) { Grafo.zoomToFit(800, 40); yaEncuadrado = true; }
-    }, 300);
+    // Distancia inicial razonable según la cantidad de nodos (sin animación).
+    // Es un "piso" por si el encuadre suave no alcanza a correr; con más
+    // nodos el grafo ocupa más espacio, por eso crece con la raíz cúbica.
+    Grafo.cameraPosition({ x: 0, y: 0, z: 110 * Math.cbrt(datos.nodes.length) });
   } catch (err) {
     console.error(err);
     const caja = el('error');

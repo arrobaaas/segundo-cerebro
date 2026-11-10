@@ -47,8 +47,8 @@
     </section>
   </aside>
 
-  <!-- Librería 3d-force-graph desde CDN, versión fija para que no cambie sola -->
-  <script src="https://cdn.jsdelivr.net/npm/3d-force-graph@1.80.1/dist/3d-force-graph.min.js"></script>
-  <script src="app.js"></script>
+  <!-- type="module": app.js usa "import" para cargar 3d-force-graph y Three.js
+       desde el CDN (con versiones fijas, para que no cambien solas) -->
+  <script type="module" src="app.js"></script>
 </body>
 </html>
