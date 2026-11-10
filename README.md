@@ -95,7 +95,36 @@ Todo el cerebro está orientado a **proyectos viables para mi carrera de Inform�
 Claude recibe siempre el contexto de [`perfil.md`](perfil.md): edítalo con tu año,
 tecnologías y tiempo disponible para que las respuestas sean para ti.
 
-### Modo gratis con claude.ai (`--manual`, recomendado)
+### Desde la página web (botón **＋ Fuente**)
+
+Funciona también desde el celular, sin terminal:
+
+1. **Conectar GitHub (una vez por dispositivo):** crea un
+   [token fine-grained](https://github.com/settings/personal-access-tokens/new) con acceso
+   *solo* a este repositorio y permiso **Contents: Read and write**, y pégalo en la página.
+   Se guarda únicamente en ese navegador (`localStorage`), nunca en el código.
+2. Pega el link de un artículo o video (o elige **PDF**) → **Copiar prompt y abrir Claude**.
+   Claude lee la fuente con tu cuenta de claude.ai (en PDF, adjúntalo en el chat).
+3. Copia el JSON que responde Claude, pégalo en la página → **Guardar en el cerebro**.
+4. La página crea `fuentes/fuente-XXX.md` en el repo, y la GitHub Action
+   [`construir-grafo`](.github/workflows/construir-grafo.yml) recalcula los embeddings y
+   actualiza `graph.json` (2-4 minutos).
+
+> Con **videos de YouTube**, Claude a veces no logra leer la transcripción (si pasa, responde
+> con un error en vez de inventar). Para videos, lo más confiable es la terminal (abajo),
+> que descarga la transcripción directamente.
+
+> **Seguridad del token:** si alguien lo obtuviera, solo podría modificar este repositorio.
+> Ponle fecha de expiración y, si lo pierdes, revócalo en GitHub → Settings → Developer settings.
+
+### GitHub Action: el grafo se reconstruye solo
+
+Cada push que cambia `ideas/`, `fuentes/`, `fusionadas/`, `planes/`, `perfil.md` o `scripts/`
+ejecuta `build_graph.py` en los servidores de GitHub y sube el `graph.json` nuevo.
+Por eso, **antes de trabajar desde la terminal, haz `git pull`** para traer el último
+`graph.json` y evitar conflictos.
+
+### Modo gratis con claude.ai desde la terminal (`--manual`)
 
 No necesitas API key: el script prepara el prompt, lo llevas a tu cuenta de
 [claude.ai](https://claude.ai/new) y le devuelves la respuesta.
