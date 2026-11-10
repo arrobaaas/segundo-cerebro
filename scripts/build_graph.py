@@ -26,7 +26,7 @@ import json
 import sys
 from datetime import datetime
 
-from cerebro import GRAPH_JSON, ErrorNodo, Nodo, leer_nodos
+from cerebro import GRAPH_JSON, ErrorNodo, Nodo, leer_nodos, leer_perfil, ruta_plan
 
 MODELO = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 # Empezamos en 0.6, pero con este modelo y textos cortos en español casi
@@ -128,6 +128,15 @@ def mostrar_resumen(nodos: list[Nodo], enlaces: list[dict], sim, umbral: float) 
         print(f"  → Si son muchos, prueba bajar el umbral (ej. --umbral {umbral - 0.05:.2f}).")
 
 
+def nodo_para_web(nodo: Nodo) -> dict:
+    """El nodo en formato graph.json, más su plan de desarrollo si existe."""
+    datos = nodo.a_dict()
+    plan = ruta_plan(nodo.id)
+    if plan.exists():
+        datos["plan"] = plan.read_text(encoding="utf-8").strip()
+    return datos
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Genera web/graph.json desde los Markdown.")
     parser.add_argument("--umbral", type=float, default=UMBRAL_POR_DEFECTO,
@@ -157,8 +166,10 @@ def main(argv: list[str] | None = None) -> int:
             "generado": datetime.now().isoformat(timespec="seconds"),
             "modelo": MODELO,
             "umbral": args.umbral,
+            # La web usa el perfil para armar los prompts de "Desarrollar con Claude"
+            "perfil": leer_perfil(),
         },
-        "nodes": [n.a_dict() for n in nodos],
+        "nodes": [nodo_para_web(n) for n in nodos],
         "links": enlaces,
     }
     GRAPH_JSON.parent.mkdir(parents=True, exist_ok=True)

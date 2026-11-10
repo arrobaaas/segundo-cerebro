@@ -40,6 +40,19 @@ CARPETAS = {
 TIPOS = tuple(CARPETAS)
 
 GRAPH_JSON = RAIZ / "web" / "graph.json"
+PERFIL = RAIZ / "perfil.md"        # contexto sobre ti que se le da a Claude
+PLANES = RAIZ / "planes"           # planes de desarrollo generados por desarrollar.py
+
+
+def leer_perfil() -> str:
+    """Texto de perfil.md (o un perfil genérico si no existe)."""
+    if PERFIL.exists():
+        return PERFIL.read_text(encoding="utf-8").strip()
+    return "Estudiante de Ingeniería en Informática."
+
+
+def ruta_plan(id_nodo: str) -> Path:
+    return PLANES / f"{id_nodo}.md"
 
 
 # --- Modelo de datos -----------------------------------------------------
