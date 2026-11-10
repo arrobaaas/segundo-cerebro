@@ -5,7 +5,7 @@
 
 ## Estado del proyecto
 
-🚧 En construcción: fase 1 ✅ · fase 2 en prueba.
+🚧 En construcción: fase 1 ✅ · fase 2 ✅ · fase 3 en prueba.
 
 👉 **Ver en vivo:** https://arrobaaas.github.io/segundo-cerebro/web/
 
@@ -89,6 +89,58 @@ que haya en `ideas/`, `fuentes/` y `fusionadas/`.
 > hablen del mismo tema. Al construir, el script muestra mín/mediana/máx para
 > que puedas ajustar el umbral a medida que crece tu grafo.
 
+## Aprender de links y desarrollar ideas con Claude (fase 3)
+
+Todo el cerebro está orientado a **proyectos viables para mi carrera de Informática**.
+Claude recibe siempre el contexto de [`perfil.md`](perfil.md): edítalo con tu año,
+tecnologías y tiempo disponible para que las respuestas sean para ti.
+
+### Configurar la API key (una sola vez)
+
+```bash
+cp .env.example .env
+nano .env          # pega tu key de https://console.anthropic.com/
+```
+
+`.env` está en `.gitignore`: **nunca** se sube al repositorio.
+
+### Agregar una fuente (video o artículo)
+
+```bash
+python scripts/agregar_fuente.py "https://www.youtube.com/watch?v=..."
+python scripts/agregar_fuente.py "https://un-blog.com/articulo"
+```
+
+1. **YouTube** → transcripción con `youtube-transcript-api` (prefiere español, luego inglés,
+   luego cualquier idioma). **Web** → texto principal con `trafilatura`.
+2. Claude devuelve (en JSON validado): título, resumen, aprendizajes, **ideas de proyecto
+   viables** con su MVP, y tecnologías.
+3. Se guarda en `fuentes/fuente-XXX.md` y se reconstruye el grafo.
+
+Si la URL ya existe no se vuelve a procesar (usa `--forzar`). Cada fuente cuesta
+aprox. US$0,03–0,10 según el largo (el script muestra el costo exacto).
+
+### Desarrollar una idea con Claude
+
+**Desde la web (gratis, sin API key):** al abrir un nodo, la sección *Desarrollar con Claude*
+arma un prompt con tu perfil, la idea y sus conexiones:
+- **Abrir en Claude ↗** abre claude.ai con el prompt escrito (y lo copia, por si acaso).
+- **Copiar prompt** para pegarlo donde quieras (Claude, Claude Code…).
+- **Preguntar ↗** abre Claude con tu pregunta sobre esa idea.
+
+> La web no usa la API a propósito: en una página pública la API key quedaría visible.
+
+**Desde la terminal (con API):**
+
+```bash
+python scripts/desarrollar.py idea-002                     # plan completo → planes/idea-002.md
+python scripts/desarrollar.py idea-002 -p "¿Qué base de datos uso?"   # pregunta rápida
+```
+
+El plan incluye viabilidad, MVP, stack, etapas con **un prompt listo por etapa**, cómo
+mostrarlo en el portafolio y siguientes pasos. Aparece en el panel de la web con un
+botón *Copiar* en cada prompt.
+
 ## Formato de un nodo (`.md`)
 
 ```markdown
@@ -130,8 +182,10 @@ segundo-cerebro/
 ├── ideas/        # nodos de ideas (Markdown + frontmatter)
 ├── fuentes/      # links y videos (Markdown + frontmatter)
 ├── fusionadas/   # ideas generadas por IA (Markdown + frontmatter)
-├── scripts/      # cerebro.py (común), agregar_idea.py, build_graph.py, ...
+├── planes/      # planes de desarrollo generados por desarrollar.py
+├── scripts/      # cerebro.py, claude_cliente.py, agregar_idea.py, agregar_fuente.py, desarrollar.py, build_graph.py
 ├── web/          # index.html, app.js, style.css, graph.json
+├── perfil.md     # tu contexto para Claude (carrera, nivel, metas)
 ├── requirements.txt
 ├── .env.example
 └── .gitignore
