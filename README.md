@@ -95,7 +95,27 @@ Todo el cerebro está orientado a **proyectos viables para mi carrera de Inform�
 Claude recibe siempre el contexto de [`perfil.md`](perfil.md): edítalo con tu año,
 tecnologías y tiempo disponible para que las respuestas sean para ti.
 
-### Configurar la API key (una sola vez)
+### Modo gratis con claude.ai (`--manual`, recomendado)
+
+No necesitas API key: el script prepara el prompt, lo llevas a tu cuenta de
+[claude.ai](https://claude.ai/new) y le devuelves la respuesta.
+
+```bash
+python scripts/agregar_fuente.py "https://www.youtube.com/watch?v=..." --manual
+python scripts/desarrollar.py idea-002 --manual           # plan → planes/idea-002.md
+python scripts/desarrollar.py idea-002 --manual -p "¿Python o JavaScript?"
+```
+
+1. El script extrae el video o artículo y arma el prompt (tu perfil + la fuente + el formato).
+2. **Con `xclip` instalado** (`sudo apt install xclip`) el prompt queda copiado: pégalo en
+   claude.ai. **Sin xclip**, arrastra el archivo `.cache/prompt_fuente.txt` al chat.
+3. Copia la respuesta de Claude (botón *Copy*) y vuelve a la terminal:
+   con xclip basta presionar Enter; sin xclip pégala y termina con Enter + Ctrl+D.
+4. El script valida el JSON (si está incompleto te deja reintentar) y crea el nodo.
+
+### Modo automático con la API (de pago)
+
+#### Configurar la API key (una sola vez)
 
 ```bash
 cp .env.example .env
@@ -104,7 +124,7 @@ nano .env          # pega tu key de https://console.anthropic.com/
 
 `.env` está en `.gitignore`: **nunca** se sube al repositorio.
 
-### Agregar una fuente (video o artículo)
+#### Agregar una fuente (video o artículo)
 
 ```bash
 python scripts/agregar_fuente.py "https://www.youtube.com/watch?v=..."
@@ -134,7 +154,7 @@ arma un prompt con tu perfil, la idea y sus conexiones:
 
 > La web no usa la API a propósito: en una página pública la API key quedaría visible.
 
-**Desde la terminal (con API):**
+**Desde la terminal** (con API, o gratis agregando `--manual`):
 
 ```bash
 python scripts/desarrollar.py idea-002                     # plan completo → planes/idea-002.md
@@ -186,8 +206,8 @@ segundo-cerebro/
 ├── ideas/        # nodos de ideas (Markdown + frontmatter)
 ├── fuentes/      # links y videos (Markdown + frontmatter)
 ├── fusionadas/   # ideas generadas por IA (Markdown + frontmatter)
-├── planes/      # planes de desarrollo generados por desarrollar.py
-├── scripts/      # cerebro.py, claude_cliente.py, agregar_idea.py, agregar_fuente.py, desarrollar.py, build_graph.py
+├── planes/       # planes de desarrollo generados por desarrollar.py
+├── scripts/      # cerebro.py, claude_cliente.py, manual.py, agregar_idea.py, agregar_fuente.py, desarrollar.py, build_graph.py
 ├── web/          # index.html, app.js, style.css, graph.json
 ├── perfil.md     # tu contexto para Claude (carrera, nivel, metas)
 ├── requirements.txt
