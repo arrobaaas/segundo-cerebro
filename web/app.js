@@ -4,13 +4,14 @@
 // la selección de nodos (panel de detalle + resaltado de conexiones).
 // ============================================================
 
-// --- Librerías (módulos ES desde CDN) -------------------------
-// Importamos Three.js en la MISMA versión exacta que usa 3d-force-graph
-// por dentro (0.186.1). Como la URL es idéntica, el navegador carga una sola
-// copia de Three y nuestras estrellas son compatibles con el resto de la escena.
-import ForceGraph3D from 'https://cdn.jsdelivr.net/npm/3d-force-graph@1.80.1/+esm';
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.186.1/+esm';
-import { UnrealBloomPass } from 'https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/postprocessing/UnrealBloomPass.js/+esm';
+// --- Librerías (copias locales en web/vendor/) ----------------
+// Por seguridad, las librerías están DENTRO del repositorio (no en un CDN):
+// así la página solo ejecuta código versionado aquí. Se descargan con
+// scripts/descargar_librerias.py. Three.js es la misma versión exacta que usa
+// 3d-force-graph por dentro (0.186.1), así hay una sola copia en memoria.
+import ForceGraph3D from './vendor/3d-force-graph.js';
+import * as THREE from './vendor/three.js';
+import { UnrealBloomPass } from './vendor/UnrealBloomPass.js';
 // Nuestro módulo para agregar fuentes desde la web (ver agregar.js)
 import { iniciarAgregar } from './agregar.js';
 

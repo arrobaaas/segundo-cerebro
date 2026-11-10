@@ -11,6 +11,13 @@
 // ¿Por qué un token? La página es estática (GitHub Pages): no hay un servidor
 // propio que pueda escribir en el repo. El token es una "llave" con permiso solo
 // para el contenido de este repositorio.
+//
+// Seguridad:
+// - Las visitas NO pueden guardar nada: GitHub solo deja crear tokens para repos
+//   donde tienes permiso de escritura. El botón ＋ Fuente ni siquiera se les muestra.
+// - Solo se aceptan tokens "fine-grained" (github_pat_...), que se limitan a un repo.
+//   Los clásicos (ghp_...) dan acceso a TODOS tus repos: se rechazan.
+// - El token vive solo en el localStorage de tu navegador; nunca va al código.
 // ============================================================
 
 const CLAVE_TOKEN = 'segundo-cerebro.github-token';
@@ -233,6 +240,16 @@ export function iniciarAgregar({ obtenerMeta, obtenerNodos, agregarNodoLocal, al
 
   $('nombre-repo').textContent = REPO.split('/')[1];
 
+  // El botón ＋ Fuente solo aparece en TUS dispositivos: los que ya tienen el token,
+  // o si abres la página con #editar al final de la dirección (para conectarlo la
+  // primera vez). Las visitas ven solo el grafo.
+  const botonAgregar = $('btn-agregar');
+  function actualizarModoEdicion() {
+    botonAgregar.hidden = !(leerToken() || window.location.hash === '#editar');
+  }
+  actualizarModoEdicion();
+  window.addEventListener('hashchange', actualizarModoEdicion);
+
   function mostrarResultado(texto, tipo) {
     resultado.textContent = texto;
     resultado.className = `ayuda-texto ${tipo ?? ''}`;
@@ -285,6 +302,11 @@ export function iniciarAgregar({ obtenerMeta, obtenerNodos, agregarNodoLocal, al
     e.preventDefault();
     const token = $('input-token').value.trim();
     if (!token) return;
+    if (!token.startsWith('github_pat_')) {
+      mostrarResultado('Usa un token "fine-grained" (empieza con github_pat_). Los tokens ' +
+        'clásicos (ghp_…) dan acceso a todos tus repositorios: es demasiado riesgo.', 'error');
+      return;
+    }
     if (!guardarToken(token)) {
       mostrarResultado('Este navegador no permite guardar datos (¿modo privado?).', 'error');
       return;
@@ -302,13 +324,14 @@ export function iniciarAgregar({ obtenerMeta, obtenerNodos, agregarNodoLocal, al
   $('btn-desconectar').addEventListener('click', () => {
     borrarToken();
     actualizarEstadoGithub();
+    actualizarModoEdicion();
   });
 
   // Paso 2: copiar el prompt y abrir Claude
   $('btn-prompt-fuente').addEventListener('click', () => {
     const esPdf = tipoElegido() === 'pdf';
     const url = $('input-url').value.trim();
-    if (!esPdf && !/^https?:\/\/\S+$/i.test(url)) {
+    if ((!esPdf || url) && !/^https?:\/\/\S+$/i.test(url)) {
       mostrarResultado('Pega un link que empiece con http:// o https://', 'error');
       return;
     }
@@ -340,6 +363,10 @@ export function iniciarAgregar({ obtenerMeta, obtenerNodos, agregarNodoLocal, al
     }
 
     const url = $('input-url').value.trim() || null;
+    if (url && !/^https?:\/\/\S+$/i.test(url)) {
+      mostrarResultado('El link debe empezar con http:// o https://', 'error');
+      return;
+    }
     const fecha = new Date().toLocaleDateString('sv-SE'); // formato AAAA-MM-DD, hora local
     const boton = $('btn-guardar-fuente');
     boton.disabled = true;
