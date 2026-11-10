@@ -1,4 +1,9 @@
 {
+  "meta": {
+    "generado": "2026-11-09T23:49:17",
+    "modelo": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "umbral": 0.45
+  },
   "nodes": [
     {
       "id": "idea-001",
@@ -97,7 +102,11 @@
       "contenido": "Un tutor de IA que genera preguntas desde tus apuntes y te las vuelve a hacer en intervalos de repetición espaciada.\n\nCada día de estudio suma a una racha visual, para que repasar se sienta como cuidar un hábito.",
       "fecha": "2026-10-20",
       "fuente_url": null,
-      "padres": ["idea-003", "fuente-002", "idea-001"]
+      "padres": [
+        "idea-003",
+        "fuente-002",
+        "idea-001"
+      ]
     },
     {
       "id": "fusionada-002",
@@ -106,7 +115,11 @@
       "contenido": "Rutina diaria de 20 minutos con rachas y ejercicios de teoría que suben de nivel a medida que avanzas.",
       "fecha": "2026-10-22",
       "fuente_url": null,
-      "padres": ["idea-005", "idea-001", "fuente-004"]
+      "padres": [
+        "idea-005",
+        "idea-001",
+        "fuente-004"
+      ]
     },
     {
       "id": "fusionada-003",
@@ -115,32 +128,121 @@
       "contenido": "Un mapa de conceptos de tus ramos donde los nodos se conectan por embeddings, y una IA te pregunta sobre las conexiones entre materias.",
       "fecha": "2026-10-25",
       "fuente_url": null,
-      "padres": ["idea-006", "idea-003", "fuente-003"]
+      "padres": [
+        "idea-006",
+        "idea-003",
+        "fuente-003"
+      ]
     }
   ],
   "links": [
-    { "source": "idea-001", "target": "fuente-001", "similitud": 0.82, "tipo": "similitud" },
-    { "source": "idea-001", "target": "idea-002", "similitud": 0.64, "tipo": "similitud" },
-    { "source": "idea-002", "target": "fuente-002", "similitud": 0.66, "tipo": "similitud" },
-    { "source": "idea-002", "target": "idea-006", "similitud": 0.61, "tipo": "similitud" },
-    { "source": "idea-003", "target": "fuente-002", "similitud": 0.71, "tipo": "similitud" },
-    { "source": "idea-003", "target": "fuente-003", "similitud": 0.77, "tipo": "similitud" },
-    { "source": "idea-003", "target": "idea-006", "similitud": 0.68, "tipo": "similitud" },
-    { "source": "idea-004", "target": "fuente-003", "similitud": 0.62, "tipo": "similitud" },
-    { "source": "idea-004", "target": "fuente-004", "similitud": 0.73, "tipo": "similitud" },
-    { "source": "idea-004", "target": "idea-005", "similitud": 0.70, "tipo": "similitud" },
-    { "source": "idea-005", "target": "fuente-004", "similitud": 0.79, "tipo": "similitud" },
-    { "source": "idea-005", "target": "fuente-001", "similitud": 0.63, "tipo": "similitud" },
-    { "source": "fusionada-001", "target": "fusionada-003", "similitud": 0.69, "tipo": "similitud" },
-
-    { "source": "fusionada-001", "target": "idea-003", "similitud": 0.80, "tipo": "padre" },
-    { "source": "fusionada-001", "target": "fuente-002", "similitud": 0.74, "tipo": "padre" },
-    { "source": "fusionada-001", "target": "idea-001", "similitud": 0.65, "tipo": "padre" },
-    { "source": "fusionada-002", "target": "idea-005", "similitud": 0.81, "tipo": "padre" },
-    { "source": "fusionada-002", "target": "idea-001", "similitud": 0.67, "tipo": "padre" },
-    { "source": "fusionada-002", "target": "fuente-004", "similitud": 0.72, "tipo": "padre" },
-    { "source": "fusionada-003", "target": "idea-006", "similitud": 0.78, "tipo": "padre" },
-    { "source": "fusionada-003", "target": "idea-003", "similitud": 0.75, "tipo": "padre" },
-    { "source": "fusionada-003", "target": "fuente-003", "similitud": 0.70, "tipo": "padre" }
+    {
+      "source": "fusionada-001",
+      "target": "idea-003",
+      "similitud": 0.717,
+      "tipo": "padre"
+    },
+    {
+      "source": "fusionada-003",
+      "target": "idea-003",
+      "similitud": 0.527,
+      "tipo": "padre"
+    },
+    {
+      "source": "idea-004",
+      "target": "fuente-004",
+      "similitud": 0.551,
+      "tipo": "similitud"
+    },
+    {
+      "source": "idea-004",
+      "target": "fusionada-002",
+      "similitud": 0.524,
+      "tipo": "similitud"
+    },
+    {
+      "source": "idea-005",
+      "target": "fuente-004",
+      "similitud": 0.527,
+      "tipo": "similitud"
+    },
+    {
+      "source": "fusionada-002",
+      "target": "idea-005",
+      "similitud": 0.778,
+      "tipo": "padre"
+    },
+    {
+      "source": "fusionada-003",
+      "target": "idea-006",
+      "similitud": 0.773,
+      "tipo": "padre"
+    },
+    {
+      "source": "fuente-002",
+      "target": "fuente-004",
+      "similitud": 0.499,
+      "tipo": "similitud"
+    },
+    {
+      "source": "fusionada-001",
+      "target": "fuente-002",
+      "similitud": 0.586,
+      "tipo": "padre"
+    },
+    {
+      "source": "fuente-002",
+      "target": "fusionada-002",
+      "similitud": 0.491,
+      "tipo": "similitud"
+    },
+    {
+      "source": "fusionada-002",
+      "target": "fuente-004",
+      "similitud": 0.607,
+      "tipo": "padre"
+    },
+    {
+      "source": "fusionada-001",
+      "target": "fusionada-002",
+      "similitud": 0.547,
+      "tipo": "similitud"
+    },
+    {
+      "source": "fusionada-001",
+      "target": "fusionada-003",
+      "similitud": 0.509,
+      "tipo": "similitud"
+    },
+    {
+      "source": "idea-002",
+      "target": "fusionada-001",
+      "similitud": 0.427,
+      "tipo": "similitud"
+    },
+    {
+      "source": "fuente-001",
+      "target": "idea-001",
+      "similitud": 0.429,
+      "tipo": "similitud"
+    },
+    {
+      "source": "fusionada-001",
+      "target": "idea-001",
+      "similitud": 0.449,
+      "tipo": "padre"
+    },
+    {
+      "source": "fusionada-002",
+      "target": "idea-001",
+      "similitud": 0.38,
+      "tipo": "padre"
+    },
+    {
+      "source": "fusionada-003",
+      "target": "fuente-003",
+      "similitud": 0.428,
+      "tipo": "padre"
+    }
   ]
 }
