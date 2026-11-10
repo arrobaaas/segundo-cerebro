@@ -1,9 +1,9 @@
 {
   "meta": {
-    "generado": "2026-11-10T00:04:01",
+    "generado": "2026-11-10T00:29:28",
     "modelo": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
     "umbral": 0.45,
-    "perfil": "# Mi perfil\n\nEste archivo le da contexto a Claude cada vez que resume una fuente o te\npropone/desarrolla una idea. Mientras más concreto, mejores respuestas.\nEdítalo cuando quieras (es texto libre).\n\n⚠ El repositorio es público: no pongas datos privados aquí.\n\n- Carrera: Ingeniería en Informática (estudiante).\n- Año / semestre: (complétalo)\n- Tecnologías que ya manejo: Python, HTML, CSS, JavaScript, Git. (ajústalo)\n- Tecnologías que quiero aprender: (complétalo, ej. bases de datos, APIs, nube, IA)\n- Tiempo para proyectos personales: (ej. 5-8 horas a la semana)\n- Área que me interesa: (ej. desarrollo web, datos, IA, ciberseguridad, videojuegos)\n- Objetivo: construir proyectos viables que me sirvan para aprender, armar mi\n  portafolio y prepararme para mi práctica profesional y mi primer trabajo."
+    "perfil": "- Carrera: Ingeniería en Informática (estudiante).\n- Año / semestre: (complétalo)\n- Tecnologías que ya manejo: Python, HTML, CSS, JavaScript, Git. (ajústalo)\n- Tecnologías que quiero aprender: (complétalo, ej. bases de datos, APIs, nube, IA)\n- Tiempo para proyectos personales: (ej. 5-8 horas a la semana)\n- Área que me interesa: (ej. desarrollo web, datos, IA, ciberseguridad, videojuegos)\n- Objetivo: construir proyectos viables que me sirvan para aprender, armar mi\n  portafolio y prepararme para mi práctica profesional y mi primer trabajo."
   },
   "nodes": [
     {

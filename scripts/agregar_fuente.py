@@ -5,6 +5,7 @@ carrera de Informática, lo guarda como nodo "fuente" y reconstruye el grafo.
 Uso:
     python scripts/agregar_fuente.py https://www.youtube.com/watch?v=XXXXXXXXXXX
     python scripts/agregar_fuente.py https://un-blog.com/articulo
+    python scripts/agregar_fuente.py <url> --manual        # GRATIS: usa tu cuenta de claude.ai
     python scripts/agregar_fuente.py <url> --sin-build     # no reconstruye el grafo
     python scripts/agregar_fuente.py <url> --forzar        # aunque ya exista esa URL
 
@@ -13,6 +14,9 @@ Cómo funciona:
     Web     → texto principal con trafilatura (descarta menús, anuncios, etc.)
     Luego   → Claude devuelve un JSON con título, resumen, aprendizajes,
               ideas de proyecto y tecnologías (structured outputs)
+
+Modo --manual: en vez de la API (de pago), el script te entrega el prompt para
+pegarlo en claude.ai y tú le devuelves la respuesta. Mismo resultado, sin costo.
 """
 
 from __future__ import annotations
@@ -24,10 +28,11 @@ import sys
 import urllib.parse
 import urllib.request
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from cerebro import RAIZ, guardar_nodo, leer_nodos, leer_perfil
 from claude_cliente import ErrorClaude, pedir_estructurado, salir_con_error
+from manual import entregar_prompt, extraer_json, recibir_respuesta
 
 # Claude acepta textos enormes (1M tokens), pero un tope evita gastar de más
 # por error (ej. un link a un libro completo). ~400.000 caracteres ≈ 100.000 tokens.
@@ -147,14 +152,60 @@ Instrucciones:
   (ej. un tema de finanzas → una herramienta de software para ese tema)."""
 
 
-def resumir(texto: str, url: str, titulo_original: str | None, es_video: bool) -> ResumenFuente:
+def mensaje_fuente(texto: str, url: str, titulo_original: str | None, es_video: bool) -> str:
     tipo = "Transcripción de un video de YouTube" if es_video else "Artículo web"
-    mensaje = (
+    return (
         f"{tipo}\nURL: {url}\n"
         + (f"Título original: {titulo_original}\n" if titulo_original else "")
         + f"\n<fuente>\n{texto}\n</fuente>"
     )
+
+
+def resumir(texto: str, url: str, titulo_original: str | None, es_video: bool) -> ResumenFuente:
+    """Modo API: la API garantiza el formato con structured outputs."""
+    mensaje = mensaje_fuente(texto, url, titulo_original, es_video)
     return pedir_estructurado(SYSTEM_RESUMEN.format(perfil=leer_perfil()), mensaje, ResumenFuente)
+
+
+# En claude.ai no podemos forzar el formato como con la API: se lo pedimos
+# con un ejemplo explícito y después lo validamos con Pydantic.
+FORMATO_MANUAL = """Responde ÚNICAMENTE con un JSON dentro de un bloque ```json, sin texto antes ni
+después, con exactamente esta forma:
+
+```json
+{
+  "titulo": "título corto en español que describa la fuente",
+  "resumen": "3 a 5 oraciones: de qué trata y por qué me sirve en mi carrera",
+  "aprendizajes": ["aprendizaje técnico concreto", "..."],
+  "ideas_proyecto": [
+    {"nombre": "nombre corto", "descripcion": "qué hace y qué problema resuelve", "mvp": "versión mínima construible en pocas semanas"}
+  ],
+  "tecnologias": ["tecnología o concepto clave", "..."]
+}
+```
+
+Incluye 3 a 5 aprendizajes y 2 o 3 ideas de proyecto."""
+
+
+def resumir_manual(texto: str, url: str, titulo_original: str | None, es_video: bool) -> ResumenFuente:
+    """Modo manual: el usuario lleva el prompt a claude.ai y trae la respuesta."""
+    prompt = (
+        SYSTEM_RESUMEN.format(perfil=leer_perfil())
+        + "\n\n" + mensaje_fuente(texto, url, titulo_original, es_video)
+        + "\n\n" + FORMATO_MANUAL
+    )
+    entregar_prompt(prompt, "prompt_fuente.txt")
+
+    for intento in range(3):  # si se pega mal, damos otra oportunidad
+        respuesta = recibir_respuesta("el bloque JSON de la respuesta")
+        try:
+            return ResumenFuente.model_validate(extraer_json(respuesta))
+        except (ValueError, ValidationError) as e:
+            detalle = e.errors()[0]["msg"] if isinstance(e, ValidationError) else str(e)
+            print(f"✘ No pude leer la respuesta: {detalle}")
+            if intento < 2:
+                print("  Vuelve a copiar la respuesta completa de Claude e inténtalo de nuevo.")
+    raise ErrorClaude("No se recibió una respuesta válida después de 3 intentos.")
 
 
 def armar_contenido(r: ResumenFuente) -> str:
@@ -174,6 +225,8 @@ def armar_contenido(r: ResumenFuente) -> str:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Agrega una fuente (YouTube o web) al grafo.")
     parser.add_argument("url", help="link de YouTube o de una página web")
+    parser.add_argument("--manual", action="store_true",
+                        help="gratis: copiar el prompt a claude.ai en vez de usar la API")
     parser.add_argument("--sin-build", action="store_true", help="no reconstruir graph.json")
     parser.add_argument("--forzar", action="store_true", help="agregarla aunque esa URL ya exista")
     args = parser.parse_args(argv)
@@ -209,10 +262,13 @@ def main(argv: list[str] | None = None) -> int:
             f"El texto es muy largo ({len(texto):,} caracteres, máximo {MAX_CARACTERES:,}). "
             "Prueba con una fuente más corta."))
 
-    # 2) Resumir con Claude
-    print("🧠 Claude está resumiendo la fuente...")
+    # 2) Resumir con Claude (por la API, o a mano en claude.ai)
     try:
-        r = resumir(texto, url, titulo_original, bool(video_id))
+        if args.manual:
+            r = resumir_manual(texto, url, titulo_original, bool(video_id))
+        else:
+            print("🧠 Claude está resumiendo la fuente...")
+            r = resumir(texto, url, titulo_original, bool(video_id))
     except ErrorClaude as e:
         return salir_con_error(e)
 

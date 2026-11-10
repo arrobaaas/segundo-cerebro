@@ -1,10 +1,13 @@
 # Mi perfil
 
-Este archivo le da contexto a Claude cada vez que resume una fuente o te
-propone/desarrolla una idea. Mientras más concreto, mejores respuestas.
-Edítalo cuando quieras (es texto libre).
+<!--
+  Este archivo le da contexto a Claude cada vez que resume una fuente o te
+  propone/desarrolla una idea. Mientras más concreto, mejores respuestas.
+  Edítalo cuando quieras (es texto libre). Lo que esté dentro de este
+  comentario NO se le envía a Claude.
 
-⚠ El repositorio es público: no pongas datos privados aquí.
+  ⚠ El repositorio es público: no pongas datos privados aquí.
+-->
 
 - Carrera: Ingeniería en Informática (estudiante).
 - Año / semestre: (complétalo)

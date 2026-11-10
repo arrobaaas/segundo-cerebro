@@ -47,7 +47,12 @@ PLANES = RAIZ / "planes"           # planes de desarrollo generados por desarrol
 def leer_perfil() -> str:
     """Texto de perfil.md (o un perfil genérico si no existe)."""
     if PERFIL.exists():
-        return PERFIL.read_text(encoding="utf-8").strip()
+        texto = PERFIL.read_text(encoding="utf-8")
+        # Quitamos los comentarios <!-- ... --> (notas para ti, no para Claude)
+        # y el título "# Mi perfil", que no aporta información.
+        texto = re.sub(r"<!--.*?-->", "", texto, flags=re.DOTALL)
+        texto = re.sub(r"^#\s.*$", "", texto, flags=re.MULTILINE)
+        return re.sub(r"\n{3,}", "\n\n", texto).strip()
     return "Estudiante de Ingeniería en Informática."
 
 

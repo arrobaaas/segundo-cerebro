@@ -72,7 +72,8 @@ def _llamar(**kwargs):
         # Sin key, el SDK lanza TypeError("Could not resolve authentication method...")
         if "authentication method" in str(e):
             raise ErrorClaude(
-                "No encontré ANTHROPIC_API_KEY. Copia .env.example a .env y pon tu key."
+                "No encontré ANTHROPIC_API_KEY. Copia .env.example a .env y pon tu key,\n"
+                "  o usa --manual para hacerlo gratis con tu cuenta de claude.ai."
             ) from None
         raise
 
