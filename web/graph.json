@@ -1,200 +1,249 @@
 {
   "meta": {
-    "generado": "2026-11-09T23:49:17",
+    "generado": "2026-11-10T00:04:01",
     "modelo": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
-    "umbral": 0.45
+    "umbral": 0.45,
+    "perfil": "# Mi perfil\n\nEste archivo le da contexto a Claude cada vez que resume una fuente o te\npropone/desarrolla una idea. Mientras más concreto, mejores respuestas.\nEdítalo cuando quieras (es texto libre).\n\n⚠ El repositorio es público: no pongas datos privados aquí.\n\n- Carrera: Ingeniería en Informática (estudiante).\n- Año / semestre: (complétalo)\n- Tecnologías que ya manejo: Python, HTML, CSS, JavaScript, Git. (ajústalo)\n- Tecnologías que quiero aprender: (complétalo, ej. bases de datos, APIs, nube, IA)\n- Tiempo para proyectos personales: (ej. 5-8 horas a la semana)\n- Área que me interesa: (ej. desarrollo web, datos, IA, ciberseguridad, videojuegos)\n- Objetivo: construir proyectos viables que me sirvan para aprender, armar mi\n  portafolio y prepararme para mi práctica profesional y mi primer trabajo."
   },
   "nodes": [
     {
       "id": "idea-001",
-      "titulo": "App de hábitos con rachas visuales",
+      "titulo": "API de horarios de la universidad",
       "tipo": "idea",
-      "contenido": "Una app minimalista para registrar hábitos diarios donde cada racha se ve como una planta que crece.\n\nSi rompes la racha, la planta no muere: se marchita un poco, para no castigar demasiado.",
+      "contenido": "Una API REST que publique los horarios, salas y profesores de mi carrera en JSON, para que cualquiera pueda construir apps encima. Empezar scrapeando o cargando el horario a mano y exponerlo con endpoints simples.",
       "fecha": "2026-10-02",
       "fuente_url": null,
       "padres": []
     },
     {
       "id": "idea-002",
-      "titulo": "Diario de aprendizaje semanal",
+      "titulo": "Bot de Discord para dudas del curso",
       "tipo": "idea",
-      "contenido": "Cada domingo escribir tres cosas que aprendí en la semana y una pregunta que todavía no sé responder.",
-      "fecha": "2026-10-05",
+      "contenido": "Un bot en el Discord del curso que responda preguntas frecuentes sobre fechas de pruebas, materia y enunciados, usando los documentos que publica el profesor.",
+      "fecha": "2026-10-04",
       "fuente_url": null,
       "padres": []
     },
     {
       "id": "idea-003",
-      "titulo": "Tutor de IA para repasar apuntes",
+      "titulo": "Portafolio web con blog técnico",
       "tipo": "idea",
-      "contenido": "Subir mis apuntes de clase y que una IA me haga preguntas tipo prueba, corrigiendo mis respuestas y explicando lo que me falta.",
-      "fecha": "2026-10-08",
+      "contenido": "Mi sitio personal con mis proyectos, CV y un blog donde explique lo que voy aprendiendo. Publicado gratis en GitHub Pages y con dominio propio más adelante.",
+      "fecha": "2026-10-07",
       "fuente_url": null,
       "padres": []
     },
     {
       "id": "idea-004",
-      "titulo": "Generador de melodías con IA",
+      "titulo": "App para dividir gastos entre compañeros",
       "tipo": "idea",
-      "contenido": "Un programa que propone melodías cortas a partir de un estado de ánimo, para usarlas como punto de partida al componer.",
-      "fecha": "2026-10-11",
+      "contenido": "Una app web donde compañeros de departamento registran gastos comunes y la app calcula quién le debe a quién con el mínimo de transferencias.",
+      "fecha": "2026-10-10",
       "fuente_url": null,
       "padres": []
     },
     {
       "id": "idea-005",
-      "titulo": "Rutina de práctica musical de 20 minutos",
+      "titulo": "Dashboard de mi actividad en GitHub",
       "tipo": "idea",
-      "contenido": "Practicar guitarra 20 minutos al día con bloques fijos: 5 de técnica, 10 de repertorio y 5 de improvisación libre.",
-      "fecha": "2026-10-13",
+      "contenido": "Una página que muestre gráficos de mis commits, lenguajes más usados y rachas de programación, sacando los datos de la API de GitHub.",
+      "fecha": "2026-10-12",
       "fuente_url": null,
       "padres": []
     },
     {
       "id": "idea-006",
-      "titulo": "Mapa de conceptos de mis ramos",
+      "titulo": "Sistema de reservas de salas de estudio",
       "tipo": "idea",
-      "contenido": "Dibujar los conceptos de cada ramo como un grafo para ver cómo se conectan entre materias distintas.",
+      "contenido": "Un sistema para reservar salas de estudio de la biblioteca por bloques horarios, con login de estudiantes y aviso por correo antes de la reserva.",
       "fecha": "2026-10-15",
       "fuente_url": null,
       "padres": []
     },
     {
       "id": "fuente-001",
-      "titulo": "Resumen: hábitos atómicos",
+      "titulo": "(Ejemplo) Video: API REST con FastAPI desde cero",
       "tipo": "fuente",
-      "contenido": "Los cambios pequeños y constantes se acumulan. Para crear un hábito: hacerlo obvio, atractivo, fácil y satisfactorio.\n\nLa identidad importa más que la meta: en vez de 'quiero leer un libro', pensar 'soy una persona que lee'.",
+      "contenido": "Explica cómo construir una API REST en Python con FastAPI: rutas, validación con Pydantic, documentación automática con Swagger y conexión a una base de datos SQLite.\n\nAprendizajes clave:\n• Diseñar endpoints con verbos HTTP correctos\n• Validar datos de entrada con modelos\n• Probar la API desde la documentación automática\n\nTecnologías: Python, FastAPI, Pydantic, SQLite",
       "fecha": "2026-10-03",
-      "fuente_url": "https://example.com/resumen-habitos-atomicos",
+      "fuente_url": "https://example.com/video-fastapi",
       "padres": []
     },
     {
       "id": "fuente-002",
-      "titulo": "Video: la técnica de repetición espaciada",
+      "titulo": "(Ejemplo) Artículo: qué buscan los reclutadores en un portafolio junior",
       "tipo": "fuente",
-      "contenido": "Repasar la información en intervalos cada vez más largos (1 día, 3 días, 1 semana...) fija la memoria mucho mejor que estudiar todo de una vez.",
-      "fecha": "2026-10-07",
-      "fuente_url": "https://www.youtube.com/watch?v=EJEMPLO0001",
+      "contenido": "Los reclutadores valoran pocos proyectos terminados y bien explicados por sobre muchos tutoriales copiados. Recomienda un README claro, una demo en vivo y contar qué problema real resuelve cada proyecto.\n\nAprendizajes clave:\n• Calidad sobre cantidad de proyectos\n• Un README con capturas y cómo ejecutarlo\n• Explicar decisiones técnicas en entrevistas\n\nTecnologías: GitHub, GitHub Pages, Markdown",
+      "fecha": "2026-10-06",
+      "fuente_url": "https://example.com/portafolio-junior",
       "padres": []
     },
     {
       "id": "fuente-003",
-      "titulo": "Artículo: cómo funcionan los modelos de lenguaje",
+      "titulo": "(Ejemplo) Video: chatbots con tus propios documentos (RAG)",
       "tipo": "fuente",
-      "contenido": "Los modelos de lenguaje predicen la siguiente palabra a partir del contexto. Los embeddings representan el significado de un texto como un vector de números: textos parecidos quedan cerca.",
+      "contenido": "Explica RAG: dividir documentos en fragmentos, convertirlos en embeddings, buscar los más parecidos a la pregunta y entregárselos a un modelo de lenguaje para que responda con esa información.\n\nAprendizajes clave:\n• Qué son los embeddings y la búsqueda semántica\n• Cómo evitar que el modelo invente respuestas\n• Costos y límites de las APIs de IA\n\nTecnologías: Python, embeddings, API de Claude, bases vectoriales",
       "fecha": "2026-10-09",
-      "fuente_url": "https://example.com/como-funcionan-los-llm",
+      "fuente_url": "https://example.com/video-rag",
       "padres": []
     },
     {
       "id": "fuente-004",
-      "titulo": "Video: teoría musical básica en 15 minutos",
+      "titulo": "(Ejemplo) Artículo: la API de GitHub y los webhooks",
       "tipo": "fuente",
-      "contenido": "Escalas mayores y menores, cómo se forman los acordes y por qué ciertas progresiones suenan 'bien'.",
-      "fecha": "2026-10-12",
-      "fuente_url": "https://www.youtube.com/watch?v=EJEMPLO0002",
+      "contenido": "Muestra cómo consultar la API REST de GitHub para obtener repositorios, commits y lenguajes, y cómo usar webhooks para reaccionar a eventos como un push.\n\nAprendizajes clave:\n• Autenticación con tokens personales\n• Límites de uso (rate limits) y paginación\n• Webhooks para automatizar tareas\n\nTecnologías: GitHub API, JSON, webhooks, JavaScript",
+      "fecha": "2026-10-11",
+      "fuente_url": "https://example.com/github-api",
       "padres": []
     },
     {
       "id": "fusionada-001",
-      "titulo": "Tutor con repetición espaciada y rachas",
+      "titulo": "Asistente RAG del curso en Discord",
       "tipo": "fusionada",
-      "contenido": "Un tutor de IA que genera preguntas desde tus apuntes y te las vuelve a hacer en intervalos de repetición espaciada.\n\nCada día de estudio suma a una racha visual, para que repasar se sienta como cuidar un hábito.",
+      "contenido": "Un bot de Discord que responde dudas del curso buscando en los apuntes y enunciados del profesor con embeddings, y cita el documento de donde sacó la respuesta.\n\nCombina el bot de dudas con la técnica RAG: un proyecto de IA real, útil para los compañeros y muy bueno para el portafolio.",
       "fecha": "2026-10-20",
       "fuente_url": null,
       "padres": [
-        "idea-003",
-        "fuente-002",
-        "idea-001"
+        "idea-002",
+        "fuente-003"
       ]
     },
     {
       "id": "fusionada-002",
-      "titulo": "App de práctica musical gamificada",
+      "titulo": "Portafolio con métricas de GitHub en vivo",
       "tipo": "fusionada",
-      "contenido": "Rutina diaria de 20 minutos con rachas y ejercicios de teoría que suben de nivel a medida que avanzas.",
+      "contenido": "Mi portafolio muestra, junto a cada proyecto, gráficos actualizados de su actividad en GitHub, para que un reclutador vea que programo de forma constante.\n\nUne el portafolio, el dashboard de GitHub y lo que buscan los reclutadores.",
       "fecha": "2026-10-22",
       "fuente_url": null,
       "padres": [
+        "idea-003",
         "idea-005",
-        "idea-001",
+        "fuente-002",
         "fuente-004"
       ]
     },
     {
       "id": "fusionada-003",
-      "titulo": "Grafo de apuntes que te hace preguntas",
+      "titulo": "Reservas de salas con API REST pública",
       "tipo": "fusionada",
-      "contenido": "Un mapa de conceptos de tus ramos donde los nodos se conectan por embeddings, y una IA te pregunta sobre las conexiones entre materias.",
+      "contenido": "El sistema de reservas expone una API REST documentada con FastAPI, reutilizando el modelo de horarios de la universidad, para que otros estudiantes puedan crear apps o bots que reserven salas.",
       "fecha": "2026-10-25",
       "fuente_url": null,
       "padres": [
         "idea-006",
-        "idea-003",
-        "fuente-003"
+        "idea-001",
+        "fuente-001"
       ]
     }
   ],
   "links": [
     {
-      "source": "fusionada-001",
-      "target": "idea-003",
-      "similitud": 0.717,
-      "tipo": "padre"
+      "source": "idea-001",
+      "target": "fuente-001",
+      "similitud": 0.559,
+      "tipo": "similitud"
+    },
+    {
+      "source": "idea-001",
+      "target": "fuente-004",
+      "similitud": 0.548,
+      "tipo": "similitud"
     },
     {
       "source": "fusionada-003",
-      "target": "idea-003",
-      "similitud": 0.527,
+      "target": "idea-001",
+      "similitud": 0.624,
       "tipo": "padre"
     },
     {
-      "source": "idea-004",
-      "target": "fuente-004",
-      "similitud": 0.551,
+      "source": "fusionada-001",
+      "target": "idea-002",
+      "similitud": 0.817,
+      "tipo": "padre"
+    },
+    {
+      "source": "idea-003",
+      "target": "idea-005",
+      "similitud": 0.559,
       "tipo": "similitud"
     },
     {
-      "source": "idea-004",
-      "target": "fusionada-002",
-      "similitud": 0.524,
+      "source": "idea-003",
+      "target": "fuente-002",
+      "similitud": 0.457,
       "tipo": "similitud"
+    },
+    {
+      "source": "idea-003",
+      "target": "fuente-004",
+      "similitud": 0.533,
+      "tipo": "similitud"
+    },
+    {
+      "source": "fusionada-002",
+      "target": "idea-003",
+      "similitud": 0.531,
+      "tipo": "padre"
     },
     {
       "source": "idea-005",
       "target": "fuente-004",
-      "similitud": 0.527,
+      "similitud": 0.67,
       "tipo": "similitud"
     },
     {
       "source": "fusionada-002",
       "target": "idea-005",
-      "similitud": 0.778,
+      "similitud": 0.738,
       "tipo": "padre"
     },
     {
       "source": "fusionada-003",
       "target": "idea-006",
-      "similitud": 0.773,
+      "similitud": 0.66,
       "tipo": "padre"
+    },
+    {
+      "source": "fuente-001",
+      "target": "fuente-003",
+      "similitud": 0.52,
+      "tipo": "similitud"
+    },
+    {
+      "source": "fusionada-003",
+      "target": "fuente-001",
+      "similitud": 0.535,
+      "tipo": "padre"
+    },
+    {
+      "source": "fuente-002",
+      "target": "fuente-003",
+      "similitud": 0.512,
+      "tipo": "similitud"
     },
     {
       "source": "fuente-002",
       "target": "fuente-004",
-      "similitud": 0.499,
+      "similitud": 0.466,
+      "tipo": "similitud"
+    },
+    {
+      "source": "fuente-002",
+      "target": "fusionada-001",
+      "similitud": 0.509,
+      "tipo": "similitud"
+    },
+    {
+      "source": "fuente-003",
+      "target": "fuente-004",
+      "similitud": 0.478,
       "tipo": "similitud"
     },
     {
       "source": "fusionada-001",
-      "target": "fuente-002",
-      "similitud": 0.586,
+      "target": "fuente-003",
+      "similitud": 0.574,
       "tipo": "padre"
-    },
-    {
-      "source": "fuente-002",
-      "target": "fusionada-002",
-      "similitud": 0.491,
-      "tipo": "similitud"
     },
     {
       "source": "fusionada-002",
@@ -203,45 +252,15 @@
       "tipo": "padre"
     },
     {
-      "source": "fusionada-001",
-      "target": "fusionada-002",
-      "similitud": 0.547,
-      "tipo": "similitud"
-    },
-    {
-      "source": "fusionada-001",
+      "source": "idea-004",
       "target": "fusionada-003",
-      "similitud": 0.509,
+      "similitud": 0.372,
       "tipo": "similitud"
-    },
-    {
-      "source": "idea-002",
-      "target": "fusionada-001",
-      "similitud": 0.427,
-      "tipo": "similitud"
-    },
-    {
-      "source": "fuente-001",
-      "target": "idea-001",
-      "similitud": 0.429,
-      "tipo": "similitud"
-    },
-    {
-      "source": "fusionada-001",
-      "target": "idea-001",
-      "similitud": 0.449,
-      "tipo": "padre"
     },
     {
       "source": "fusionada-002",
-      "target": "idea-001",
-      "similitud": 0.38,
-      "tipo": "padre"
-    },
-    {
-      "source": "fusionada-003",
-      "target": "fuente-003",
-      "similitud": 0.428,
+      "target": "fuente-002",
+      "similitud": 0.439,
       "tipo": "padre"
     }
   ]
