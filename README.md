@@ -19,7 +19,7 @@
 
 ## Stack
 
-- **Frontend**: HTML + JS + [3d-force-graph](https://github.com/elscienit/3d-force-graph) (Three.js + física de fuerzas). Sin framework. GitHub Pages.
+- **Frontend**: HTML + JS + [3d-force-graph](https://github.com/vasturiano/3d-force-graph) (Three.js + física de fuerzas). Sin framework. GitHub Pages.
 - **Datos**: Markdown con frontmatter por nodo en `ideas/`, `fuentes/` y `fusionadas/`.
 - **Procesamiento**: Python (`build_graph.py`, `agregar_fuente.py`, `fusionar.py`).
 - **Similitud**: embeddings con `sentence-transformers` (paraphrase-multilingual-MiniLM-L12-v2), umbral de similitud configurable.
@@ -35,9 +35,40 @@ pip install -r requirements.txt
 
 # visor 3D (fase 1)
 cd web
-python -m http.server 8000
+python3 -m http.server 8000
 # abrir http://localhost:8000
 ```
+
+> ¿Por qué un servidor y no doble clic en `index.html`? Por seguridad, el navegador
+> bloquea `fetch()` de archivos locales (`file://`), así que no podría leer `graph.json`.
+
+### Probar en el celular
+
+Con el servidor corriendo y el celular en el **mismo wifi** que el computador:
+
+```bash
+hostname -I   # muestra la IP local, por ejemplo 192.168.1.23
+```
+
+Abre `http://<esa-IP>:8000` en el navegador del celular.
+
+## Formato de `graph.json`
+
+Es el "contrato" entre los scripts de Python (que lo generan) y la web (que lo dibuja):
+
+```json
+{
+  "nodes": [
+    { "id": "idea-001", "titulo": "...", "tipo": "idea | fuente | fusionada",
+      "contenido": "...", "fecha": "2026-11-09", "fuente_url": null, "padres": [] }
+  ],
+  "links": [
+    { "source": "idea-001", "target": "fuente-001", "similitud": 0.82, "tipo": "similitud | padre" }
+  ]
+}
+```
+
+Los enlaces `padre` unen una idea fusionada con los nodos que la originaron.
 
 ## Estructura
 
