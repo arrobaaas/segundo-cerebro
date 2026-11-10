@@ -286,6 +286,7 @@ Grafo.onEngineStop(() => { if (!yaEncuadrado) encuadrar(); });
 // Ajustar el tamaño al girar el celular o cambiar el tamaño de la ventana
 window.addEventListener('resize', () => {
   Grafo.width(window.innerWidth).height(window.innerHeight);
+  ajustarVistaPanel(panel.classList.contains('abierto'));
 });
 
 // --- Selección ------------------------------------------------
@@ -324,7 +325,10 @@ function limpiarSeleccion() {
 // de inmediato con qué se conecta. zoomToFit acepta un filtro de nodos.
 function enfocarCamara(nodo) {
   if (vecinosPorId.get(nodo.id).size > 0) {
-    Grafo.zoomToFit(1000, 70, (n) => nodosResaltados.has(n));
+    // En celular el panel tapa la mitad de abajo: dejamos más margen para que
+    // el encuadre quepa en la mitad de arriba (ver ajustarVistaPanel)
+    const margen = esMovil() ? Math.round(window.innerHeight * 0.25) + 20 : 70;
+    Grafo.zoomToFit(1000, margen, (n) => nodosResaltados.has(n));
     return;
   }
   // Nodo sin conexiones: lo miramos de cerca, sobre la línea centro -> nodo
@@ -388,6 +392,10 @@ function mostrarPanel(nodo) {
   el('panel-num-conexiones').textContent = `(${conexiones.length})`;
   llenarLista(el('panel-conexiones'), conexiones);
 
+  mostrarPlan(nodo);
+  el('input-pregunta').value = '';
+
+  ajustarVistaPanel(true);
   panel.classList.add('abierto');
   panel.setAttribute('aria-hidden', 'false');
   panel.scrollTop = 0;
@@ -425,12 +433,190 @@ function llenarLista(ul, items) {
 function ocultarPanel() {
   panel.classList.remove('abierto');
   panel.setAttribute('aria-hidden', 'true');
+  ajustarVistaPanel(false);
+}
+
+// En celular (pantalla angosta) el panel es una hoja que cubre la mitad de abajo.
+const esMovil = () => window.innerWidth <= 640;
+
+// setViewOffset "corre" la imagen sin mover la cámara: le decimos a Three.js que
+// dibuje como si la pantalla empezara un 25% más abajo, así el centro de la escena
+// queda en la mitad de arriba, visible sobre el panel. Los clics siguen funcionando
+// porque la detección de nodos usa esta misma proyección.
+function ajustarVistaPanel(abierto) {
+  const camara = Grafo.camera();
+  const W = window.innerWidth;
+  const H = window.innerHeight;
+  if (abierto && esMovil()) camara.setViewOffset(W, H, 0, H * 0.25, W, H);
+  else camara.clearViewOffset();
+  camara.updateProjectionMatrix();
 }
 
 el('cerrar').addEventListener('click', limpiarSeleccion);
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') limpiarSeleccion();
 });
+
+// --- Desarrollar con Claude ----------------------------------
+// Armamos el prompt aquí mismo en el navegador y lo abrimos en claude.ai con
+// la cuenta del usuario. NO usamos la API: en una página pública la API key
+// quedaría visible para cualquiera que abra las herramientas del navegador.
+
+let meta = {}; // datos.meta de graph.json (incluye el perfil)
+
+// Contexto común: perfil + la idea + sus conexiones más fuertes
+function contextoNodo(nodo) {
+  const conexiones = [...enlacesPorId.get(nodo.id)]
+    .map((e) => {
+      const otro = idDe(e.source) === nodo.id ? idDe(e.target) : idDe(e.source);
+      return { n: nodosPorId.get(otro), s: e.similitud ?? 0 };
+    })
+    .sort((a, b) => b.s - a.s)
+    .slice(0, 5);
+
+  let texto = '';
+  if (meta.perfil) texto += `Mi perfil:\n${meta.perfil}\n\n`;
+  texto += `Idea de mi "segundo cerebro" (${NOMBRES_TIPO[nodo.tipo] ?? nodo.tipo}): ${nodo.titulo}\n`;
+  texto += `${nodo.contenido}\n`;
+  if (nodo.fuente_url) texto += `Fuente: ${nodo.fuente_url}\n`;
+  if (conexiones.length) {
+    texto += '\nIdeas relacionadas que tengo anotadas:\n';
+    for (const { n } of conexiones) {
+      // Solo el primer párrafo de cada una, para no alargar el prompt
+      const resumen = String(n.contenido ?? '').split(/\n\s*\n/)[0].slice(0, 300);
+      texto += `- ${n.titulo}: ${resumen}\n`;
+    }
+  }
+  return texto;
+}
+
+function promptDesarrollo(nodo) {
+  return (
+    contextoNodo(nodo) +
+    '\nSoy estudiante de Ingeniería en Informática y quiero convertir esta idea en un ' +
+    'proyecto real y viable para mi portafolio. Ayúdame con:\n' +
+    '1. Viabilidad: dificultad, tiempo estimado y qué voy a aprender.\n' +
+    '2. El MVP: la versión mínima que vale la pena terminar.\n' +
+    '3. Stack recomendado (preferir opciones gratuitas), justificando cada elección.\n' +
+    '4. Un plan de 4 a 6 etapas. Para cada etapa, escribe un prompt listo para copiar ' +
+    'que pueda usar contigo (o con Claude Code) para desarrollarla.\n' +
+    'Explícame las decisiones técnicas: estoy aprendiendo.'
+  );
+}
+
+function promptPregunta(nodo, pregunta) {
+  return contextoNodo(nodo) + `\nMi pregunta sobre esta idea: ${pregunta}`;
+}
+
+// Copia texto al portapapeles. navigator.clipboard solo funciona en https o
+// localhost; en http (ej. probando desde el celular por IP) usamos el método antiguo.
+async function copiar(texto) {
+  try {
+    await navigator.clipboard.writeText(texto);
+    return true;
+  } catch {
+    const area = document.createElement('textarea');
+    area.value = texto;
+    area.style.position = 'fixed';
+    area.style.opacity = '0';
+    document.body.appendChild(area);
+    area.select();
+    const ok = document.execCommand('copy');
+    area.remove();
+    return ok;
+  }
+}
+
+let temporizadorAviso;
+function avisar(texto) {
+  const aviso = el('aviso');
+  aviso.textContent = texto;
+  aviso.hidden = false;
+  clearTimeout(temporizadorAviso);
+  temporizadorAviso = setTimeout(() => { aviso.hidden = true; }, 2800);
+}
+
+// Abre claude.ai con el prompt ya escrito (?q=...). Además lo copiamos, por si
+// el prompt es muy largo para una URL o claude.ai no lo rellena: basta pegarlo.
+const LARGO_MAXIMO_URL = 6000;
+async function abrirEnClaude(prompt) {
+  // window.open primero (antes de cualquier await): si no, el navegador del
+  // celular puede bloquearlo como pop-up no solicitado.
+  const codificado = encodeURIComponent(prompt);
+  const url = codificado.length <= LARGO_MAXIMO_URL
+    ? `https://claude.ai/new?q=${codificado}`
+    : 'https://claude.ai/new';
+  window.open(url, '_blank', 'noopener');
+  const copiado = await copiar(prompt);
+  if (codificado.length > LARGO_MAXIMO_URL) {
+    avisar(copiado ? 'Prompt copiado: pégalo en Claude' : 'No se pudo copiar el prompt');
+  }
+}
+
+el('btn-abrir-claude').addEventListener('click', () => {
+  if (seleccionado) abrirEnClaude(promptDesarrollo(seleccionado));
+});
+
+el('btn-copiar-prompt').addEventListener('click', async () => {
+  if (!seleccionado) return;
+  avisar((await copiar(promptDesarrollo(seleccionado))) ? 'Prompt copiado ✓' : 'No se pudo copiar');
+});
+
+el('form-pregunta').addEventListener('submit', (e) => {
+  e.preventDefault(); // un <form> recargaría la página al enviarse
+  const pregunta = el('input-pregunta').value.trim();
+  if (!seleccionado || !pregunta) return;
+  abrirEnClaude(promptPregunta(seleccionado, pregunta));
+});
+
+// Muestra el plan (Markdown simple) de forma segura: armamos los elementos
+// con textContent, nunca con innerHTML. Los bloques ``` son los prompts:
+// cada uno lleva su propio botón "Copiar".
+function mostrarPlan(nodo) {
+  const seccion = el('seccion-plan');
+  const contenedorPlan = el('panel-plan');
+  contenedorPlan.replaceChildren();
+  seccion.hidden = !nodo.plan;
+  if (!nodo.plan) return;
+
+  // Partes alternadas: texto, código, texto, código...
+  const partes = nodo.plan.replace(/<!--[\s\S]*?-->/g, '').split(/```[^\n]*\n?/);
+  partes.forEach((parte, i) => {
+    if (i % 2 === 1) {
+      const bloque = document.createElement('div');
+      bloque.className = 'bloque-prompt';
+      const pre = document.createElement('pre');
+      pre.textContent = parte.trim();
+      const boton = document.createElement('button');
+      boton.type = 'button';
+      boton.className = 'boton-mini';
+      boton.textContent = 'Copiar';
+      boton.addEventListener('click', async () => {
+        avisar((await copiar(pre.textContent)) ? 'Prompt copiado ✓' : 'No se pudo copiar');
+      });
+      bloque.append(boton, pre);
+      contenedorPlan.appendChild(bloque);
+      return;
+    }
+    // Texto: títulos (#) como encabezados y el resto como párrafos
+    for (const trozo of parte.split(/\n\s*\n/)) {
+      for (const linea of trozo.trim().split('\n')) {
+        const titulo = linea.match(/^#{1,4}\s+(.*)/);
+        if (titulo) {
+          const h = document.createElement('h4');
+          h.textContent = titulo[1].replace(/\*\*/g, '');
+          contenedorPlan.appendChild(h);
+        }
+      }
+      const resto = trozo.trim().split('\n').filter((l) => !/^#{1,4}\s/.test(l)).join('\n');
+      if (resto) {
+        const p = document.createElement('p');
+        p.textContent = resto.replace(/\*\*/g, ''); // quitamos ** (negritas) para que se lea limpio
+        contenedorPlan.appendChild(p);
+      }
+    }
+  });
+}
 
 // --- Leyenda --------------------------------------------------
 
@@ -463,6 +649,7 @@ async function cargar() {
     if (!respuesta.ok) throw new Error(`HTTP ${respuesta.status}`);
     const datos = await respuesta.json();
 
+    meta = datos.meta ?? {};
     construirIndices(datos);
     construirLeyenda(datos.nodes);
     Grafo.graphData(datos);

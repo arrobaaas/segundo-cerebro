@@ -229,3 +229,101 @@ html, body {
   /* Botones más altos: más fáciles de tocar con el dedo */
   .lista-nodos button { padding: 12px 8px; }
 }
+
+/* ---------- Contenido con saltos de línea (listas "•" de las fuentes) ---------- */
+#panel-contenido p { white-space: pre-line; }
+
+/* ---------- Desarrollar con Claude ---------- */
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.boton {
+  flex: 1 1 auto;
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--texto);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.boton:hover { background: rgba(255, 255, 255, 0.12); }
+.boton-principal {
+  border-color: transparent;
+  background: #d97757; /* naranjo tipo Claude */
+  color: #fff;
+  font-weight: 600;
+}
+.boton-principal:hover { background: #e58a6b; }
+
+.pregunta { display: flex; gap: 8px; }
+.pregunta input {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--texto);
+  font: inherit;
+  font-size: 16px; /* 16px o más: evita que el celular haga zoom al escribir */
+}
+.pregunta .boton { flex: none; }
+
+/* ---------- Plan de desarrollo ---------- */
+.plan { font-size: 14px; line-height: 1.55; }
+.plan h4 { margin: 18px 0 6px; font-size: 15px; color: var(--texto); }
+.plan p { margin: 0 0 8px; white-space: pre-line; }
+.bloque-prompt {
+  position: relative;
+  margin: 8px 0 12px;
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.45);
+}
+.bloque-prompt pre {
+  margin: 0;
+  padding: 12px;
+  padding-top: 36px;
+  max-height: 260px;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-size: 13px;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+.bloque-prompt .boton-mini {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+}
+.boton-mini {
+  padding: 4px 10px;
+  border: 1px solid var(--borde);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--texto);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* ---------- Aviso flotante ---------- */
+#aviso {
+  position: fixed;
+  left: 50%;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  max-width: calc(100vw - 32px);
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: #fff;
+  color: #000;
+  font-size: 14px;
+  z-index: 10;
+}

@@ -24,6 +24,9 @@
     <span class="solo-tactil">Un dedo para rotar · pellizca para zoom · toca un nodo</span>
   </p>
 
+  <!-- Aviso breve ("Prompt copiado", etc.) -->
+  <div id="aviso" role="status" hidden></div>
+
   <!-- Mensaje de error si no se pudo cargar graph.json -->
   <div id="error" hidden></div>
 
@@ -35,6 +38,27 @@
     <p id="panel-meta"></p>
     <a id="panel-url" target="_blank" rel="noopener noreferrer" hidden>Abrir fuente ↗</a>
     <div id="panel-contenido"></div>
+
+    <!-- Conectar la idea con Claude. Usa TU cuenta de claude.ai (sin API key:
+         en una página pública, una key quedaría a la vista de cualquiera). -->
+    <section id="seccion-claude">
+      <h3>Desarrollar con Claude</h3>
+      <div class="acciones">
+        <button id="btn-abrir-claude" type="button" class="boton boton-principal">Abrir en Claude ↗</button>
+        <button id="btn-copiar-prompt" type="button" class="boton">Copiar prompt</button>
+      </div>
+      <form id="form-pregunta" class="pregunta">
+        <input id="input-pregunta" type="text" placeholder="Pregúntale algo sobre esta idea…"
+               autocomplete="off" enterkeyhint="send" aria-label="Pregunta para Claude">
+        <button type="submit" class="boton">Preguntar ↗</button>
+      </form>
+    </section>
+
+    <!-- Plan generado con scripts/desarrollar.py (solo si existe) -->
+    <section id="seccion-plan" hidden>
+      <h3>Plan de desarrollo</h3>
+      <div id="panel-plan" class="plan"></div>
+    </section>
 
     <section id="panel-padres-seccion" hidden>
       <h3>Nació de</h3>
