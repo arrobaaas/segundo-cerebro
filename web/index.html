@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport-fit=cover: usa toda la pantalla en celulares con notch -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <title>Segundo Cerebro</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Aquí la librería dibuja el canvas 3D -->
+  <div id="grafo" aria-label="Grafo 3D de ideas"></div>
+
+  <!-- Encabezado y leyenda de colores (se rellena desde app.js) -->
+  <header id="encabezado">
+    <h1>Segundo Cerebro</h1>
+    <ul id="leyenda"></ul>
+  </header>
+
+  <!-- Ayuda de controles: cambia el texto según sea mouse o pantalla táctil -->
+  <p id="ayuda">
+    <span class="solo-mouse">Arrastra para rotar · rueda para zoom · clic en un nodo</span>
+    <span class="solo-tactil">Un dedo para rotar · pellizca para zoom · toca un nodo</span>
+  </p>
+
+  <!-- Mensaje de error si no se pudo cargar graph.json -->
+  <div id="error" hidden></div>
+
+  <!-- Panel de detalle del nodo seleccionado -->
+  <aside id="panel" aria-hidden="true">
+    <button id="cerrar" type="button" aria-label="Cerrar panel">✕</button>
+    <span id="panel-tipo" class="chip"></span>
+    <h2 id="panel-titulo"></h2>
+    <p id="panel-meta"></p>
+    <a id="panel-url" target="_blank" rel="noopener noreferrer" hidden>Abrir fuente ↗</a>
+    <div id="panel-contenido"></div>
+
+    <section id="panel-padres-seccion" hidden>
+      <h3>Nació de</h3>
+      <ul id="panel-padres" class="lista-nodos"></ul>
+    </section>
+
+    <section>
+      <h3>Conexiones <span id="panel-num-conexiones"></span></h3>
+      <ul id="panel-conexiones" class="lista-nodos"></ul>
+    </section>
+  </aside>
+
+  <!-- Librería 3d-force-graph desde CDN, versión fija para que no cambie sola -->
+  <script src="https://cdn.jsdelivr.net/npm/3d-force-graph@1.80.1/dist/3d-force-graph.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

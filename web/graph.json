@@ -1,0 +1,146 @@
+{
+  "nodes": [
+    {
+      "id": "idea-001",
+      "titulo": "App de hábitos con rachas visuales",
+      "tipo": "idea",
+      "contenido": "Una app minimalista para registrar hábitos diarios donde cada racha se ve como una planta que crece.\n\nSi rompes la racha, la planta no muere: se marchita un poco, para no castigar demasiado.",
+      "fecha": "2026-10-02",
+      "fuente_url": null,
+      "padres": []
+    },
+    {
+      "id": "idea-002",
+      "titulo": "Diario de aprendizaje semanal",
+      "tipo": "idea",
+      "contenido": "Cada domingo escribir tres cosas que aprendí en la semana y una pregunta que todavía no sé responder.",
+      "fecha": "2026-10-05",
+      "fuente_url": null,
+      "padres": []
+    },
+    {
+      "id": "idea-003",
+      "titulo": "Tutor de IA para repasar apuntes",
+      "tipo": "idea",
+      "contenido": "Subir mis apuntes de clase y que una IA me haga preguntas tipo prueba, corrigiendo mis respuestas y explicando lo que me falta.",
+      "fecha": "2026-10-08",
+      "fuente_url": null,
+      "padres": []
+    },
+    {
+      "id": "idea-004",
+      "titulo": "Generador de melodías con IA",
+      "tipo": "idea",
+      "contenido": "Un programa que propone melodías cortas a partir de un estado de ánimo, para usarlas como punto de partida al componer.",
+      "fecha": "2026-10-11",
+      "fuente_url": null,
+      "padres": []
+    },
+    {
+      "id": "idea-005",
+      "titulo": "Rutina de práctica musical de 20 minutos",
+      "tipo": "idea",
+      "contenido": "Practicar guitarra 20 minutos al día con bloques fijos: 5 de técnica, 10 de repertorio y 5 de improvisación libre.",
+      "fecha": "2026-10-13",
+      "fuente_url": null,
+      "padres": []
+    },
+    {
+      "id": "idea-006",
+      "titulo": "Mapa de conceptos de mis ramos",
+      "tipo": "idea",
+      "contenido": "Dibujar los conceptos de cada ramo como un grafo para ver cómo se conectan entre materias distintas.",
+      "fecha": "2026-10-15",
+      "fuente_url": null,
+      "padres": []
+    },
+    {
+      "id": "fuente-001",
+      "titulo": "Resumen: hábitos atómicos",
+      "tipo": "fuente",
+      "contenido": "Los cambios pequeños y constantes se acumulan. Para crear un hábito: hacerlo obvio, atractivo, fácil y satisfactorio.\n\nLa identidad importa más que la meta: en vez de 'quiero leer un libro', pensar 'soy una persona que lee'.",
+      "fecha": "2026-10-03",
+      "fuente_url": "https://example.com/resumen-habitos-atomicos",
+      "padres": []
+    },
+    {
+      "id": "fuente-002",
+      "titulo": "Video: la técnica de repetición espaciada",
+      "tipo": "fuente",
+      "contenido": "Repasar la información en intervalos cada vez más largos (1 día, 3 días, 1 semana...) fija la memoria mucho mejor que estudiar todo de una vez.",
+      "fecha": "2026-10-07",
+      "fuente_url": "https://www.youtube.com/watch?v=EJEMPLO0001",
+      "padres": []
+    },
+    {
+      "id": "fuente-003",
+      "titulo": "Artículo: cómo funcionan los modelos de lenguaje",
+      "tipo": "fuente",
+      "contenido": "Los modelos de lenguaje predicen la siguiente palabra a partir del contexto. Los embeddings representan el significado de un texto como un vector de números: textos parecidos quedan cerca.",
+      "fecha": "2026-10-09",
+      "fuente_url": "https://example.com/como-funcionan-los-llm",
+      "padres": []
+    },
+    {
+      "id": "fuente-004",
+      "titulo": "Video: teoría musical básica en 15 minutos",
+      "tipo": "fuente",
+      "contenido": "Escalas mayores y menores, cómo se forman los acordes y por qué ciertas progresiones suenan 'bien'.",
+      "fecha": "2026-10-12",
+      "fuente_url": "https://www.youtube.com/watch?v=EJEMPLO0002",
+      "padres": []
+    },
+    {
+      "id": "fusionada-001",
+      "titulo": "Tutor con repetición espaciada y rachas",
+      "tipo": "fusionada",
+      "contenido": "Un tutor de IA que genera preguntas desde tus apuntes y te las vuelve a hacer en intervalos de repetición espaciada.\n\nCada día de estudio suma a una racha visual, para que repasar se sienta como cuidar un hábito.",
+      "fecha": "2026-10-20",
+      "fuente_url": null,
+      "padres": ["idea-003", "fuente-002", "idea-001"]
+    },
+    {
+      "id": "fusionada-002",
+      "titulo": "App de práctica musical gamificada",
+      "tipo": "fusionada",
+      "contenido": "Rutina diaria de 20 minutos con rachas y ejercicios de teoría que suben de nivel a medida que avanzas.",
+      "fecha": "2026-10-22",
+      "fuente_url": null,
+      "padres": ["idea-005", "idea-001", "fuente-004"]
+    },
+    {
+      "id": "fusionada-003",
+      "titulo": "Grafo de apuntes que te hace preguntas",
+      "tipo": "fusionada",
+      "contenido": "Un mapa de conceptos de tus ramos donde los nodos se conectan por embeddings, y una IA te pregunta sobre las conexiones entre materias.",
+      "fecha": "2026-10-25",
+      "fuente_url": null,
+      "padres": ["idea-006", "idea-003", "fuente-003"]
+    }
+  ],
+  "links": [
+    { "source": "idea-001", "target": "fuente-001", "similitud": 0.82, "tipo": "similitud" },
+    { "source": "idea-001", "target": "idea-002", "similitud": 0.64, "tipo": "similitud" },
+    { "source": "idea-002", "target": "fuente-002", "similitud": 0.66, "tipo": "similitud" },
+    { "source": "idea-002", "target": "idea-006", "similitud": 0.61, "tipo": "similitud" },
+    { "source": "idea-003", "target": "fuente-002", "similitud": 0.71, "tipo": "similitud" },
+    { "source": "idea-003", "target": "fuente-003", "similitud": 0.77, "tipo": "similitud" },
+    { "source": "idea-003", "target": "idea-006", "similitud": 0.68, "tipo": "similitud" },
+    { "source": "idea-004", "target": "fuente-003", "similitud": 0.62, "tipo": "similitud" },
+    { "source": "idea-004", "target": "fuente-004", "similitud": 0.73, "tipo": "similitud" },
+    { "source": "idea-004", "target": "idea-005", "similitud": 0.70, "tipo": "similitud" },
+    { "source": "idea-005", "target": "fuente-004", "similitud": 0.79, "tipo": "similitud" },
+    { "source": "idea-005", "target": "fuente-001", "similitud": 0.63, "tipo": "similitud" },
+    { "source": "fusionada-001", "target": "fusionada-003", "similitud": 0.69, "tipo": "similitud" },
+
+    { "source": "fusionada-001", "target": "idea-003", "similitud": 0.80, "tipo": "padre" },
+    { "source": "fusionada-001", "target": "fuente-002", "similitud": 0.74, "tipo": "padre" },
+    { "source": "fusionada-001", "target": "idea-001", "similitud": 0.65, "tipo": "padre" },
+    { "source": "fusionada-002", "target": "idea-005", "similitud": 0.81, "tipo": "padre" },
+    { "source": "fusionada-002", "target": "idea-001", "similitud": 0.67, "tipo": "padre" },
+    { "source": "fusionada-002", "target": "fuente-004", "similitud": 0.72, "tipo": "padre" },
+    { "source": "fusionada-003", "target": "idea-006", "similitud": 0.78, "tipo": "padre" },
+    { "source": "fusionada-003", "target": "idea-003", "similitud": 0.75, "tipo": "padre" },
+    { "source": "fusionada-003", "target": "fuente-003", "similitud": 0.70, "tipo": "padre" }
+  ]
+}
