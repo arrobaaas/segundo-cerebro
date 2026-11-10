@@ -236,10 +236,40 @@ segundo-cerebro/
 ├── fuentes/      # links y videos (Markdown + frontmatter)
 ├── fusionadas/   # ideas generadas por IA (Markdown + frontmatter)
 ├── planes/       # planes de desarrollo generados por desarrollar.py
-├── scripts/      # cerebro.py, claude_cliente.py, manual.py, agregar_idea.py, agregar_fuente.py, desarrollar.py, build_graph.py
-├── web/          # index.html, app.js, style.css, graph.json
+├── .githooks/    # pre-commit: bloquea commits con claves
+├── scripts/      # cerebro.py, claude_cliente.py, manual.py, descargar_librerias.py, agregar_idea.py, agregar_fuente.py, desarrollar.py, build_graph.py
+├── web/          # index.html, app.js, agregar.js, style.css, graph.json, vendor/ (librerías)
 ├── perfil.md     # tu contexto para Claude (carrera, nivel, metas)
 ├── requirements.txt
 ├── .env.example
 └── .gitignore
 ```
+
+## Seguridad
+
+**Las visitas solo pueden mirar.** La página no tiene ninguna API key, el botón **＋ Fuente**
+solo aparece en tus dispositivos, y para guardar en el repo hace falta un token que solo
+tú puedes crear. Si una visita usa "Copiar y abrir Claude", se abre *su propia* cuenta de claude.ai.
+
+| Qué | Cómo se protege |
+|---|---|
+| API key de Anthropic | Solo en `.env` (en `.gitignore`), nunca en la web ni en el repo |
+| Subir una clave por error | Hook `pre-commit` local (bloquea claves y `.env`) + *secret scanning* con *push protection* de GitHub |
+| Token de GitHub | Solo *fine-grained* (un repo, permiso *Contents*); se rechazan los clásicos `ghp_`. Vive solo en el `localStorage` de tu navegador |
+| Código de terceros | Librerías JS dentro del repo (`web/vendor/`, con sus huellas SHA-256 en `versiones.json`), sin CDN |
+| Inyección de código (XSS) | Todo el texto se inserta con `textContent`; la CSP prohíbe scripts externos e *inline* |
+| GitHub Action | Solo corre con pushes a `main`; Actions fijadas a un commit (SHA); permisos mínimos |
+
+**Al clonar el repo en otro computador**, activa el hook:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+**Para conectar un dispositivo nuevo** (celular, otro navegador), abre la página con
+`#editar` al final: `https://arrobaaas.github.io/segundo-cerebro/web/#editar`.
+Crea el token con **fecha de expiración** (ej. 90 días). Si pierdes un dispositivo, revoca el
+token en GitHub → *Settings* → *Developer settings* → *Personal access tokens*.
+
+> ⚠ **El repositorio es público**: cualquiera puede leer tus ideas, fuentes y `perfil.md`.
+> No guardes ahí nada privado.

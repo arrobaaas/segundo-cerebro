@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Hook de git: se ejecuta ANTES de cada commit y lo bloquea si detecta una clave
+# (API key de Anthropic, token de GitHub, etc.) o un archivo .env.
+# Se activa con:  git config core.hooksPath .githooks
+
+# 1) Nunca commitear archivos .env
+if git diff --cached --name-only | grep -qE '(^|/)\.env$'; then
+  echo "✘ Commit bloqueado: estás intentando subir un archivo .env (tiene tus claves)."
+  echo "  Sácalo con: git restore --staged .env"
+  exit 1
+fi
+
+# 2) Buscar patrones de claves en las líneas que se agregan
+PATRONES='sk-ant-[A-Za-z0-9_-]{20,}|github_pat_[A-Za-z0-9_]{20,}|gh[pousr]_[A-Za-z0-9]{30,}|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY|AIza[0-9A-Za-z_-]{35}'
+encontrados=$(git diff --cached -U0 --no-color | grep -E '^\+' | grep -vE '^\+\+\+' | grep -nE "$PATRONES" | grep -v 'sk-ant-xxxxxxxx')
+if [ -n "$encontrados" ]; then
+  echo "✘ Commit bloqueado: parece que hay una clave secreta en los cambios:"
+  echo "$encontrados" | sed -E 's/(sk-ant-|github_pat_|gh[pousr]_)[A-Za-z0-9_-]{6}[A-Za-z0-9_-]*/\1******/g' | head -5
+  echo "  Las claves van solo en .env (que está en .gitignore). Quítala y vuelve a intentar."
+  exit 1
+fi
+exit 0
