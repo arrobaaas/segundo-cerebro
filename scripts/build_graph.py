@@ -24,7 +24,6 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import datetime
 
 from cerebro import GRAPH_JSON, ErrorNodo, Nodo, leer_nodos, leer_perfil, ruta_plan
 
@@ -161,9 +160,9 @@ def main(argv: list[str] | None = None) -> int:
     enlaces = construir_enlaces(nodos, sim, args.umbral)
 
     datos = {
-        # "meta" no lo usa la web todavía; sirve para saber cómo se generó
+        # "meta": cómo se generó. Sin fecha a propósito: así, si nada cambió,
+        # graph.json queda idéntico y la GitHub Action no hace commits inútiles.
         "meta": {
-            "generado": datetime.now().isoformat(timespec="seconds"),
             "modelo": MODELO,
             "umbral": args.umbral,
             # La web usa el perfil para armar los prompts de "Desarrollar con Claude"
