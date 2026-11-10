@@ -1,0 +1,7 @@
+/**
+ * Bundled by jsDelivr using Rollup v4.62.2 and esbuild v0.28.1.
+ * Original file: /npm/@babel/runtime@7.23.9/helpers/esm/wrapNativeSuper.js
+ *
+ * Do NOT use SRI with dynamically generated files! More information: https://www.jsdelivr.com/using-sri-with-dynamic-files
+ */
+function c(e){return c=Object.setPrototypeOf?Object.getPrototypeOf.bind():function(o){return o.__proto__||Object.getPrototypeOf(o)},c(e)}function u(e,r){return u=Object.setPrototypeOf?Object.setPrototypeOf.bind():function(t,n){return t.__proto__=n,t},u(e,r)}function p(e){try{return Function.toString.call(e).indexOf("[native code]")!==-1}catch{return typeof e=="function"}}function i(){try{var e=!Boolean.prototype.valueOf.call(Reflect.construct(Boolean,[],function(){}))}catch{}return(i=function(){return!!e})()}function a(e,r,o){if(i())return Reflect.construct.apply(null,arguments);var t=[null];t.push.apply(t,r);var n=new(e.bind.apply(e,t));return o&&u(n,o.prototype),n}function f(e){var r=typeof Map=="function"?new Map:void 0;return f=function(t){if(t===null||!p(t))return t;if(typeof t!="function")throw new TypeError("Super expression must either be null or a function");if(typeof r<"u"){if(r.has(t))return r.get(t);r.set(t,n)}function n(){return a(t,arguments,c(this).constructor)}return n.prototype=Object.create(t.prototype,{constructor:{value:n,enumerable:!1,writable:!0,configurable:!0}}),u(n,t)},f(e)}export{f as default};
