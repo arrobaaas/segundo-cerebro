@@ -42,7 +42,7 @@ permissions:
 # Para confiar en código nuevo, después de revisarlo y subirlo:
 #     bash scripts/confiar_codigo.sh
 env:
-  CODIGO_CONFIABLE: 3697eab84542f6c452e76c2645323984138a59d2
+  CODIGO_CONFIABLE: 1db50aeab421864ce01414e3cb3e24e8f82ac785
 
 jobs:
   construir:
