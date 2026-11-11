@@ -144,7 +144,7 @@ class ResumenFuente(BaseModel):
 
 
 SYSTEM_RESUMEN = """Eres un mentor de carrera para un estudiante de Ingeniería en Informática.
-Tu trabajo es leer una fuente (transcripción de un video o un artículo) y extraer lo que le
+Tu trabajo es leer una fuente (transcripción de un video, un artículo o un PDF) y extraer lo que le
 sirve para su desarrollo profesional y para construir proyectos reales.
 
 Perfil del estudiante:
@@ -227,6 +227,41 @@ def armar_contenido(r: ResumenFuente) -> str:
     if r.tecnologias:
         partes.append("Tecnologías: " + ", ".join(r.tecnologias))
     return "\n\n".join(partes)
+
+
+# --- PDF (lo usa procesar_pendientes.py) -------------------------------------
+
+# Límite de la API: 32 MB por solicitud (el PDF va en base64, que pesa ~33% más)
+MAX_BYTES_PDF = 20 * 1024 * 1024
+
+
+def agregar_pdf(pdf: bytes, nombre: str, url: str | None = None) -> int:
+    """Resume un PDF con Claude (lo lee completo, incluidas imágenes y tablas)
+    y lo guarda como nodo fuente. Devuelve 0 si salió bien."""
+    import base64
+
+    if not pdf.startswith(b"%PDF"):
+        return salir_con_error(ErrorExtraccion("El archivo no es un PDF válido."))
+    if len(pdf) > MAX_BYTES_PDF:
+        return salir_con_error(ErrorExtraccion(
+            f"El PDF pesa {len(pdf) / 1e6:.1f} MB (máximo {MAX_BYTES_PDF / 1e6:.0f} MB)."))
+
+    print(f"📄 PDF «{nombre}» ({len(pdf) / 1e6:.1f} MB)")
+    print("🧠 Claude está leyendo y resumiendo el PDF...")
+    mensaje = [
+        {"type": "document", "source": {"type": "base64", "media_type": "application/pdf",
+                                        "data": base64.standard_b64encode(pdf).decode()}},
+        {"type": "text", "text": f"Documento PDF\nNombre del archivo: {nombre}\n"
+                                 + (f"URL: {url}\n" if url else "")
+                                 + "Resume este documento según las instrucciones."},
+    ]
+    try:
+        r = pedir_estructurado(SYSTEM_RESUMEN.format(perfil=leer_perfil()), mensaje, ResumenFuente)
+    except ErrorClaude as e:
+        return salir_con_error(e)
+    ruta = guardar_nodo("fuente", r.titulo, armar_contenido(r), fuente_url=url)
+    print(f"✔ Fuente creada: {ruta.relative_to(RAIZ)} — {r.titulo}")
+    return 0
 
 
 # --- Programa principal ----------------------------------------------------

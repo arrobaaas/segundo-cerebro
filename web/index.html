@@ -39,8 +39,8 @@
   <aside id="agregar" class="hoja" aria-hidden="true" aria-labelledby="agregar-titulo">
     <button id="cerrar-agregar" class="cerrar" type="button" aria-label="Cerrar">✕</button>
     <h2 id="agregar-titulo">Agregar fuente</h2>
-    <p class="ayuda-texto">Pega el link de un artículo o video de YouTube: Claude lo lee, lo
-      resume pensando en tu carrera y el grafo se actualiza solo en unos minutos.</p>
+    <p class="ayuda-texto">Pega un link (artículo, página web o video de YouTube) o sube un PDF:
+      Claude lo analiza pensando en tu carrera y el grafo se actualiza solo.</p>
 
     <!-- Paso 1: solo aparece si este dispositivo aún no está conectado -->
     <section id="paso-github">
@@ -71,32 +71,32 @@
         <label><input type="radio" name="tipo-fuente" value="pdf"> PDF</label>
       </div>
       <input id="input-url" type="url" class="campo" inputmode="url"
-             placeholder="https://… (artículo o video de YouTube)" aria-label="Link de la fuente">
-      <p id="nota-link" class="ayuda-texto nota">✦ Automático: Claude lee el link en un servidor de
-        GitHub, lo resume y en 3-5 minutos aparecen las estrellas nuevas. No cierres esta pestaña
-        si quieres que se recargue sola.</p>
-      <p id="nota-pdf" class="ayuda-texto nota" hidden>📎 En el chat de Claude, adjunta el PDF
-        (clip o arrastrándolo) junto con el prompt. Si el PDF está en internet, puedes poner su
-        link arriba (opcional).</p>
+             placeholder="https://… (artículo, página web o video de YouTube)" aria-label="Link de la fuente">
+      <input id="input-pdf" type="file" class="campo" accept="application/pdf,.pdf"
+             aria-label="Archivo PDF" hidden>
+      <p id="nota-link" class="ayuda-texto nota">✦ Claude lee el link en un servidor de GitHub
+        (videos: la transcripción; páginas: el texto principal), lo resume y aparecen las
+        estrellas nuevas en 2-4 minutos.</p>
+      <p id="nota-pdf" class="ayuda-texto nota" hidden>🔒 El PDF se cifra en tu navegador antes de
+        subirlo: aunque el repositorio es público, solo el servidor que lo analiza puede leerlo.
+        Máximo 20 MB. Si el PDF está en internet, puedes poner su link arriba (opcional).</p>
       <button id="btn-auto-fuente" type="button" class="boton boton-principal ancho">
         Agregar al cerebro ✦</button>
-      <button id="btn-prompt-fuente" type="button" class="boton boton-principal ancho" hidden>
-        Copiar prompt y abrir Claude ↗</button>
-    </section>
 
-    <!-- Solo para PDF: el PDF se adjunta a mano en claude.ai -->
-    <section id="paso-respuesta" hidden>
-      <h3><span class="num-paso">3</span> · Pega la respuesta de Claude</h3>
-      <textarea id="input-respuesta" class="campo" rows="6"
-                placeholder='Copia el bloque JSON que respondió Claude y pégalo aquí: { "titulo": … }'
-                aria-label="Respuesta de Claude"></textarea>
-      <button id="btn-guardar-fuente" type="button" class="boton boton-principal ancho">
-        Guardar en el cerebro</button>
+      <!-- Barra de avance del análisis -->
+      <div id="progreso" class="progreso" hidden>
+        <div class="progreso-barra" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+             aria-labelledby="progreso-texto">
+          <div id="progreso-relleno" class="progreso-relleno"></div>
+        </div>
+        <p class="progreso-linea"><span id="progreso-texto">Enviando…</span>
+          <b id="progreso-porcentaje">0%</b></p>
+      </div>
     </section>
     <p id="resultado-fuente" class="ayuda-texto" role="status"></p>
   </aside>
 
-  <!-- Aviso breve ("Prompt copiado", etc.) -->
+  <!-- Aviso breve ("Fuente agregada", etc.) -->
   <div id="aviso" role="status" hidden></div>
 
   <!-- Mensaje de error si no se pudo cargar graph.json -->

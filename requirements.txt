@@ -11,3 +11,4 @@ anthropic==2.7.0               # SDK oficial de la API de Claude
 python-dotenv==1.2.4           # lee la API key desde el archivo .env
 youtube-transcript-api==1.2.5  # transcripciones (subtítulos) de YouTube
 trafilatura==2.3.1             # extrae el texto principal de páginas web
+cryptography==50.0.2           # descifra los PDF que sube la página (cifrados en el navegador)

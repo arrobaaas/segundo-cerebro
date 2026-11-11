@@ -10,6 +10,12 @@ Flujo automático (sin copiar prompts):
     4. Si algo falla, deja pendientes/fallidos/<id>.json con el error, para que la
        página te lo muestre.
     5. Luego la Action reconstruye graph.json y aparecen las estrellas nuevas.
+       Si salió bien, deja pendientes/listos/<id>.json con los ids creados.
+
+PDF: la página sube pendientes/<id>.bin con el PDF CIFRADO en el navegador
+(RSA-OAEP + AES-256-GCM). El repo es público, pero sin la clave privada (el secreto
+PDF_PRIVATE_KEY de GitHub) nadie puede leerlo. Formato del .bin:
+    [384 bytes: clave AES cifrada con RSA-3072] [12 bytes: IV] [PDF cifrado + etiqueta GCM]
 
 La API key viene del secreto ANTHROPIC_API_KEY de GitHub: nunca está en la página.
 
@@ -26,35 +32,71 @@ import os
 import re
 import sys
 
-from cerebro import RAIZ
+from cerebro import RAIZ, leer_nodos
 
 import agregar_fuente
 
 PENDIENTES = RAIZ / "pendientes"
 FALLIDOS = PENDIENTES / "fallidos"
+LISTOS = PENDIENTES / "listos"
 
 # Tope por ejecución: si por error se agregan muchos links, no se gasta de más.
 MAX_POR_EJECUCION = 10
 
 
-def leer_url(archivo) -> str:
+def leer_pendiente(archivo) -> dict:
     try:
         datos = json.loads(archivo.read_text(encoding="utf-8"))
-        return str(datos.get("url", "")).strip()
-    except (ValueError, AttributeError, OSError):
-        return ""
+        return datos if isinstance(datos, dict) else {}
+    except (ValueError, OSError):
+        return {}
 
 
-def procesar(url: str) -> str | None:
+def descifrar_pdf(cifrado: bytes) -> bytes:
+    """Descifra un PDF subido desde la página (ver formato arriba)."""
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import padding
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+    pem = os.environ.get("PDF_PRIVATE_KEY", "").strip()
+    if not pem:
+        raise ValueError("Falta el secreto PDF_PRIVATE_KEY en GitHub para leer PDFs.")
+    privada = serialization.load_pem_private_key(pem.encode(), password=None)
+    clave_aes = privada.decrypt(cifrado[:384], padding.OAEP(
+        mgf=padding.MGF1(hashes.SHA256()), algorithm=hashes.SHA256(), label=None))
+    return AESGCM(clave_aes).decrypt(cifrado[384:396], cifrado[396:], None)
+
+
+def procesar(datos: dict, archivo) -> str | None:
     """Agrega la fuente. Devuelve None si salió bien, o el mensaje de error."""
-    if not re.fullmatch(r"https?://\S{1,2000}", url):
+    url = str(datos.get("url") or "").strip()
+    es_pdf = datos.get("tipo") == "pdf"
+    if url and not re.fullmatch(r"https?://\S{1,2000}", url):
         return "El link no es válido (debe empezar con http:// o https://)."
+    if not es_pdf and not url:
+        return "Falta el link."
 
     errores = io.StringIO()
     with contextlib.redirect_stderr(errores):
         try:
-            codigo = agregar_fuente.main([url, "--sin-build"])
-        except Exception as e:  # que un link malo no detenga a los demás
+            if es_pdf:
+                binario = archivo.with_suffix(".bin")
+                if not binario.exists():
+                    raise ValueError("No llegó el archivo PDF.")
+                try:
+                    pdf = descifrar_pdf(binario.read_bytes())
+                except ValueError:
+                    raise
+                except Exception:
+                    raise ValueError("No se pudo descifrar el PDF (¿cambió la clave?).") from None
+                nombre = re.sub(r"[^\w .()-]", "", str(datos.get("nombre") or "documento.pdf"))[:120]
+                codigo = agregar_fuente.agregar_pdf(pdf, nombre, url or None)
+            else:
+                codigo = agregar_fuente.main([url, "--sin-build"])
+        except ValueError as e:
+            print(f"✘ {e}", file=sys.stderr)
+            codigo = 1
+        except Exception as e:  # que un archivo malo no detenga a los demás
             print(f"✘ Error inesperado: {type(e).__name__}", file=sys.stderr)
             codigo = 1
     salida = errores.getvalue()
@@ -73,13 +115,15 @@ def main() -> int:
 
     sin_key = not os.environ.get("ANTHROPIC_API_KEY") and not (RAIZ / ".env").exists()
     for archivo in archivos[:MAX_POR_EJECUCION]:
-        url = leer_url(archivo)
-        print(f"\n=== {archivo.name}: {url}")
+        datos = leer_pendiente(archivo)
+        url = str(datos.get("url") or "")
+        print(f"\n=== {archivo.name}: {datos.get('tipo', 'link')} {url}")
+        antes = {n.id for n in leer_nodos()}
         if sin_key:
             error = ("Falta la API key: agrega el secreto ANTHROPIC_API_KEY en GitHub "
                      "(Settings → Secrets and variables → Actions).")
         else:
-            error = procesar(url)
+            error = procesar(datos, archivo)
         if error:
             FALLIDOS.mkdir(parents=True, exist_ok=True)
             (FALLIDOS / archivo.name).write_text(
@@ -88,8 +132,13 @@ def main() -> int:
             )
             print(f"✘ Falló: {error}")
         else:
-            print("✔ Listo")
+            # Para que la página sepa qué estrella nueva buscar en el grafo
+            nuevos = sorted({n.id for n in leer_nodos()} - antes)
+            LISTOS.mkdir(parents=True, exist_ok=True)
+            (LISTOS / archivo.name).write_text(json.dumps({"ids": nuevos}) + "\n", encoding="utf-8")
+            print(f"✔ Listo: {', '.join(nuevos)}")
         archivo.unlink()
+        archivo.with_suffix(".bin").unlink(missing_ok=True)
 
     if len(archivos) > MAX_POR_EJECUCION:
         print(f"\nQuedan {len(archivos) - MAX_POR_EJECUCION} pendientes para la próxima ejecución.")

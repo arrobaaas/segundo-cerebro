@@ -102,12 +102,13 @@ def pedir_texto(system: str, mensaje: str, esfuerzo: str = "medium", max_tokens:
     return _texto(respuesta)
 
 
-def pedir_estructurado(system: str, mensaje: str, modelo_salida: type[BaseModel],
+def pedir_estructurado(system: str, mensaje: str | list, modelo_salida: type[BaseModel],
                        esfuerzo: str = "medium", max_tokens: int = 16000) -> BaseModel:
     """Pide una respuesta que cumpla un esquema JSON (definido con Pydantic).
 
     "Structured outputs": la API garantiza que la respuesta es JSON válido con
     exactamente los campos del esquema. Así no hay que "adivinar" el formato.
+    `mensaje` puede ser texto o una lista de bloques (ej. un PDF + instrucciones).
     """
     esquema = modelo_salida.model_json_schema()
     respuesta = _llamar(

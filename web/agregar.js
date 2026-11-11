@@ -1,17 +1,18 @@
 // ============================================================
-// Agregar fuentes desde la web.
+// Agregar fuentes desde la web (automático, sin copiar prompts).
 //
-// Flujo automático (links y videos de YouTube):
-//   1. La página guarda pendientes/<id>.json con el link en el repositorio, usando
+// Flujo:
+//   1. La página guarda pendientes/<id>.json en el repositorio (con el link, o
+//      con los datos de un PDF que sube CIFRADO como pendientes/<id>.bin), usando
 //      la API de GitHub con un token que el usuario guarda en su navegador.
-//   2. Una GitHub Action (con la API key de Claude como secreto de GitHub, nunca
-//      en esta página) saca la transcripción o el texto, lo resume con Claude,
-//      crea fuentes/fuente-XXX.md y reconstruye graph.json.
-//   3. La página consulta cada pocos segundos si ya terminó y se recarga sola.
-//      Si falló, la Action deja pendientes/fallidos/<id>.json con el error.
-//
-// Flujo manual (PDF): armamos un prompt, el usuario adjunta el PDF en claude.ai,
-// pega la respuesta (JSON) y la página crea fuentes/fuente-XXX.md.
+//   2. Ese push dispara la GitHub Action "Construir grafo", que tiene la API key de
+//      Claude como secreto de GitHub (nunca está en esta página): saca la
+//      transcripción del video, el texto de la página o lee el PDF, lo resume con
+//      Claude, crea fuentes/fuente-XXX.md y reconstruye graph.json.
+//   3. Mientras tanto la página sigue la Action paso a paso (API de GitHub
+//      Actions) y muestra un porcentaje de avance. Al terminar, la Action deja
+//      pendientes/listos/<id>.json (o pendientes/fallidos/<id>.json con el error).
+//   4. La página espera a que GitHub Pages publique el grafo nuevo y se recarga.
 //
 // ¿Por qué un token? La página es estática (GitHub Pages): no hay un servidor
 // propio que pueda escribir en el repo. El token es una "llave" con permiso solo
@@ -23,6 +24,9 @@
 // - Solo se aceptan tokens "fine-grained" (github_pat_...), que se limitan a un repo.
 //   Los clásicos (ghp_...) dan acceso a TODOS tus repos: se rechazan.
 // - El token vive solo en el localStorage de tu navegador; nunca va al código.
+// - Los PDF se cifran aquí (RSA-OAEP + AES-256-GCM) con una clave PÚBLICA: el repo
+//   es público, pero solo la Action (con la clave privada, secreto PDF_PRIVATE_KEY)
+//   puede descifrarlos.
 // ============================================================
 
 const CLAVE_TOKEN = 'segundo-cerebro.github-token';
@@ -82,211 +86,162 @@ async function verificarToken() {
   if (!r.ok) throw new Error(explicarErrorGithub(r.status));
 }
 
-// Siguiente id libre (fuente-001, fuente-002, ...) según los archivos del repo
-async function siguienteId() {
-  const r = await github(`/repos/${REPO}/contents/fuentes`);
-  if (r.status === 404) return 'fuente-001'; // la carpeta todavía no existe
-  if (!r.ok) throw new Error(explicarErrorGithub(r.status));
-  const archivos = await r.json();
-  let mayor = 0;
-  for (const { name } of archivos) {
-    const m = name.match(/^fuente-(\d+)\.md$/);
-    if (m) mayor = Math.max(mayor, Number(m[1]));
-  }
-  return `fuente-${String(mayor + 1).padStart(3, '0')}`;
-}
+// Clave pública RSA-3072 (formato SPKI en base64) para cifrar los PDF.
+// Es pública a propósito: sirve para cifrar, no para descifrar.
+const CLAVE_PUBLICA_PDF = 'MIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEApPl8KR8nZOA1WP05YCzrK8AJ0luCkCo4WskwOIBYVRcsiGw/yk97a9E48Np561jNpDGO+X0Y3nDIvx1fVh5Z0FsfJNjtyb119ge4Xkz8g8/4TvH6yWe+RXbqE8n4PCBYJFkVlaw/x9bqHURtBqo2iCHSI8GGljO6qSLNzy2TJ26yUe4Cl0slHXrO1lb6dq+T1/xvrUf9uwPMBX7uwWV7Wcc4/XvGnUqqJMWxaeu7KEy13EDAbSTtKDxeXBkIDzzqcuT1HIiMztjkbWO9JnjXTyh7JOV5qQ7RMyLDXAZLY2/HvSwlQ+R22b2PAG5a/bk9k69sF+bv1yBelTgnMWqwhSP9C+yQ/tIcMjESn4L2zq6F1XgM02yiAxggyCpMsgruDXzO7rYc1BdjTQnG7HxVz+c4ghPwzA7Erq8MuRMoPtud5njoWzZhpQ00NnTyOnnCU4tDSA43WrLWSIuONYtWRc0hMivgwRuFYQsMD6u5q4aTVyP7DHJqGe6bnp3TqWKhAgMBAAE=';
+const MAX_BYTES_PDF = 20 * 1024 * 1024; // mismo límite que scripts/agregar_fuente.py
+const WORKFLOW = 'Construir grafo';
 
-// La API pide el contenido en base64. btoa() solo acepta caracteres "latinos",
-// así que primero convertimos el texto a bytes UTF-8 (tildes, ñ, emojis...).
-function aBase64(texto) {
-  const bytes = new TextEncoder().encode(texto);
+// --- Utilidades --------------------------------------------------------
+// La API de GitHub pide el contenido en base64
+function bytesABase64(bytes) {
   let binario = '';
   for (let i = 0; i < bytes.length; i += 0x8000) {
     binario += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   }
   return btoa(binario);
 }
-
-// Crea el archivo en el repo. Si justo se ocupó ese id (otro dispositivo), reintenta.
-async function crearArchivoFuente(armarMarkdown, titulo) {
-  for (let intento = 0; intento < 3; intento++) {
-    const id = await siguienteId();
-    const r = await github(`/repos/${REPO}/contents/fuentes/${id}.md`, {
-      method: 'PUT',
-      body: JSON.stringify({
-        message: `fuente: ${titulo}`,
-        content: aBase64(armarMarkdown(id)),
-      }),
-    });
-    if (r.ok) return id;
-    if (r.status !== 422) throw new Error(explicarErrorGithub(r.status)); // 422 = ya existe
-  }
-  throw new Error('No se pudo encontrar un id libre. Inténtalo de nuevo.');
-}
-
-// --- Flujo automático: pendientes/ ------------------------------------
-function deBase64(b64) {
+const textoABase64 = (texto) => bytesABase64(new TextEncoder().encode(texto));
+function base64ATexto(b64) {
   const binario = atob(b64.replace(/\s/g, ''));
   return new TextDecoder().decode(Uint8Array.from(binario, (c) => c.charCodeAt(0)));
 }
-
-// Deja el link en pendientes/: eso dispara la GitHub Action
-async function crearPendiente(url) {
-  const nombre = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.json`;
-  const contenido = JSON.stringify({ url, fecha: new Date().toISOString() }, null, 2) + '\n';
-  const r = await github(`/repos/${REPO}/contents/pendientes/${nombre}`, {
-    method: 'PUT',
-    body: JSON.stringify({ message: `pendiente: ${url}`, content: aBase64(contenido) }),
-  });
-  if (!r.ok) throw new Error(explicarErrorGithub(r.status));
-  return nombre;
-}
-
-// Estado de un pendiente: 'procesando' | 'listo' | { error }
-async function estadoPendiente(nombre) {
-  const sinCache = { cache: 'no-store' };
-  const r = await github(`/repos/${REPO}/contents/pendientes/${nombre}`, sinCache);
-  if (r.ok) return 'procesando';
-  if (r.status !== 404) return 'procesando'; // error pasajero: seguimos esperando
-  const f = await github(`/repos/${REPO}/contents/pendientes/fallidos/${nombre}`, sinCache);
-  if (!f.ok) return 'listo';
-  const archivo = await f.json();
-  let error = 'No se pudo procesar el link.';
-  try { error = JSON.parse(deBase64(archivo.content)).error || error; } catch { /* mensaje genérico */ }
-  // Lo borramos para que no se acumulen (si falla, no importa)
-  github(`/repos/${REPO}/contents/pendientes/fallidos/${nombre}`, {
-    method: 'DELETE',
-    body: JSON.stringify({ message: 'pendiente: limpiar error', sha: archivo.sha }),
-  }).catch(() => {});
-  return { error: String(error) };
-}
-
 const esperar = (ms) => new Promise((ok) => setTimeout(ok, ms));
 
-// --- Prompt para Claude (flujo manual, PDF) --------------------------
-const FORMATO = `Responde ÚNICAMENTE con un JSON dentro de un bloque \`\`\`json, sin texto antes ni
-después, con exactamente esta forma:
-
-\`\`\`json
-{
-  "titulo": "título corto en español que describa la fuente",
-  "resumen": "3 a 5 oraciones: de qué trata y por qué me sirve en mi carrera",
-  "aprendizajes": ["aprendizaje técnico concreto", "..."],
-  "ideas_proyecto": [
-    {"nombre": "nombre corto", "descripcion": "qué hace y qué problema resuelve", "mvp": "versión mínima construible en pocas semanas"}
-  ],
-  "tecnologias": ["tecnología o concepto clave", "..."]
-}
-\`\`\`
-
-Incluye 3 a 5 aprendizajes y 2 o 3 ideas de proyecto.
-
-IMPORTANTE: si no puedes acceder al contenido completo (por ejemplo, no puedes abrir el link
-o leer la transcripción del video), NO inventes ni resumas a partir del título. Responde solo:
-\`\`\`json
-{"error": "explica brevemente qué no pudiste leer"}
-\`\`\``;
-
-function armarPrompt({ perfil, url, esPdf }) {
-  const fuente = esPdf
-    ? `Lee el PDF adjunto${url ? ` (también está en ${url})` : ''}.`
-    : `Lee esta fuente (ábrela con tu herramienta de búsqueda/navegación web): ${url}`;
-  return `Eres un mentor de carrera para un estudiante de Ingeniería en Informática.
-Tu trabajo es leer una fuente y extraer lo que le sirve para su desarrollo profesional
-y para construir proyectos reales.
-
-Perfil del estudiante:
-${perfil || 'Estudiante de Ingeniería en Informática.'}
-
-Instrucciones:
-- Escribe todo en español, claro y directo, aunque la fuente esté en otro idioma.
-- El resumen va primero y debe capturar los temas técnicos principales.
-- Las ideas de proyecto deben ser VIABLES para un estudiante: alcanzables con su nivel
-  (estudiante de 4.º año), útiles para su portafolio y conectadas con la fuente. Evita ideas genéricas.
-- Si la fuente no trata de informática, busca la conexión más razonable con su carrera.
-
-${fuente}
-
-${FORMATO}`;
+// Lecturas: con el token (5.000 consultas/hora). Si el token no tiene permiso
+// para algo (p. ej. leer Actions), probamos sin token: el repo es público.
+async function githubLectura(ruta) {
+  const r = await github(ruta, { cache: 'no-store' });
+  if (r.status !== 401 && r.status !== 403) return r;
+  return fetch(`${API}${ruta}`, { cache: 'no-store', headers: { Accept: 'application/vnd.github+json' } });
 }
 
-// --- Leer y validar la respuesta de Claude ---------------------------
-function leerRespuesta(texto) {
-  const inicio = texto.indexOf('{');
-  const fin = texto.lastIndexOf('}');
-  if (inicio === -1 || fin <= inicio) {
-    throw new Error('No encontré un JSON en lo que pegaste. Copia el bloque completo de Claude.');
-  }
-  let datos;
+// Lee un archivo JSON del repo; null si no existe
+async function leerJsonRepo(ruta) {
+  const r = await githubLectura(`/repos/${REPO}/contents/${ruta}`);
+  if (!r.ok) return null;
+  const archivo = await r.json();
   try {
-    datos = JSON.parse(texto.slice(inicio, fin + 1));
+    return { datos: JSON.parse(base64ATexto(archivo.content)), sha: archivo.sha };
   } catch {
-    throw new Error('El JSON está incompleto o mal formado. ¿Se copió la respuesta completa?');
+    return { datos: {}, sha: archivo.sha };
   }
-  if (typeof datos.error === 'string') {
-    throw new Error(`Claude no pudo leer la fuente: ${datos.error}`);
-  }
-  const esTexto = (v) => typeof v === 'string' && v.trim().length > 0;
-  const esLista = (v) => Array.isArray(v) && v.every((x) => typeof x === 'string');
-  if (!esTexto(datos.titulo) || !esTexto(datos.resumen)) {
-    throw new Error('A la respuesta le falta el "titulo" o el "resumen".');
-  }
-  if (!esLista(datos.aprendizajes ?? []) || !esLista(datos.tecnologias ?? [])) {
-    throw new Error('"aprendizajes" y "tecnologias" deben ser listas de textos.');
-  }
-  // Límites de tamaño: evitan que un texto pegado gigante (por error o a propósito)
-  // termine como un archivo enorme en el repo que haga lenta la página.
-  const corto = (v, max) => String(v ?? '').trim().slice(0, max);
-  const ideas = (datos.ideas_proyecto ?? [])
-    .filter((i) => i && esTexto(i.nombre))
-    .slice(0, 5)
-    .map((i) => ({ nombre: corto(i.nombre, 120), descripcion: corto(i.descripcion, 600), mvp: corto(i.mvp, 600) }));
-  return {
-    titulo: corto(datos.titulo, 150),
-    resumen: corto(datos.resumen, 2000),
-    aprendizajes: (datos.aprendizajes ?? []).slice(0, 8).map((a) => corto(a, 300)),
-    ideas,
-    tecnologias: (datos.tecnologias ?? []).slice(0, 15).map((x) => corto(x, 60)),
-  };
 }
 
-// Mismo formato que armar_contenido() en scripts/agregar_fuente.py:
-// el resumen va primero porque el modelo de embeddings lee solo el inicio.
-function armarContenido(r) {
-  const partes = [r.resumen, 'Aprendizajes clave:\n' + r.aprendizajes.map((a) => `• ${a}`).join('\n')];
-  if (r.ideas.length) {
-    partes.push('Ideas de proyecto que inspira:\n' +
-      r.ideas.map((i) => `• ${i.nombre}: ${i.descripcion} MVP: ${i.mvp}`).join('\n'));
-  }
-  if (r.tecnologias.length) partes.push('Tecnologías: ' + r.tecnologias.join(', '));
-  return partes.join('\n\n');
+// Borra un archivo del repo (para no acumular resultados). Si falla, no importa.
+function borrarArchivoRepo(ruta, sha) {
+  github(`/repos/${REPO}/contents/${ruta}`, {
+    method: 'DELETE',
+    body: JSON.stringify({ message: 'pendiente: limpiar', sha }),
+  }).catch(() => {});
 }
 
-// Markdown con frontmatter YAML, igual que lo escribe scripts/cerebro.py.
-// JSON.stringify produce texto entre comillas válido también en YAML, así un
-// título con ":" o comillas no rompe el archivo.
-function armarMarkdown(id, r, url, fecha) {
-  return [
-    '---',
-    `id: ${id}`,
-    `titulo: ${JSON.stringify(r.titulo)}`,
-    'tipo: fuente',
-    `fecha: '${fecha}'`,
-    `fuente_url: ${url ? JSON.stringify(url) : 'null'}`,
-    'padres: []',
-    '---',
-    '',
-    armarContenido(r),
-    '',
-  ].join('\n');
+// Crea un archivo en el repo y devuelve el sha del commit
+async function subirArchivo(ruta, contenidoBase64, mensaje) {
+  const r = await github(`/repos/${REPO}/contents/${ruta}`, {
+    method: 'PUT',
+    body: JSON.stringify({ message: mensaje, content: contenidoBase64 }),
+  });
+  if (r.status === 413) throw new Error('El archivo es demasiado grande para GitHub.');
+  if (!r.ok) throw new Error(explicarErrorGithub(r.status));
+  return (await r.json()).commit.sha;
+}
+
+// --- Cifrado de PDF (Web Crypto, nativo del navegador) -------------------
+// Formato: [384 bytes: clave AES cifrada con RSA] [12 bytes: IV] [PDF cifrado + etiqueta]
+async function cifrarPdf(bytes) {
+  const spki = Uint8Array.from(atob(CLAVE_PUBLICA_PDF), (c) => c.charCodeAt(0));
+  const rsa = await crypto.subtle.importKey('spki', spki, { name: 'RSA-OAEP', hash: 'SHA-256' },
+    false, ['encrypt']);
+  const claveAes = crypto.getRandomValues(new Uint8Array(32)); // una clave nueva por PDF
+  const aes = await crypto.subtle.importKey('raw', claveAes, 'AES-GCM', false, ['encrypt']);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const cifrado = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, aes, bytes));
+  const claveCifrada = new Uint8Array(await crypto.subtle.encrypt({ name: 'RSA-OAEP' }, rsa, claveAes));
+  claveAes.fill(0);
+  const salida = new Uint8Array(claveCifrada.length + iv.length + cifrado.length);
+  salida.set(claveCifrada, 0);
+  salida.set(iv, claveCifrada.length);
+  salida.set(cifrado, claveCifrada.length + iv.length);
+  return salida;
+}
+
+// --- Seguimiento de la GitHub Action ------------------------------------
+// Cada paso de la Action con un texto para mostrar y su duración aproximada en
+// segundos (sirve de "peso" para el porcentaje y para avanzar suave dentro del paso).
+const PASOS = [
+  [/^Set up job/i, 'Preparando el servidor', 2],
+  [/checkout/i, 'Descargando tu repositorio', 2],
+  [/setup-python/i, 'Preparando Python', 5],
+  [/cache/i, 'Cargando el modelo de IA', 6],
+  [/Instalar/i, 'Instalando herramientas', 45],
+  [/Procesar/i, null, 45], // el texto depende del tipo (video, página o PDF)
+  [/Construir/i, 'Conectando con tus otras ideas', 10],
+  [/Guardar/i, 'Guardando las estrellas nuevas', 4],
+];
+
+// Fracción (0 a 1) de la Action ya hecha y qué está haciendo ahora
+function avanceDeJob(job, textoAnalisis) {
+  let total = 0;
+  let hecho = 0;
+  let texto = 'Preparando el servidor';
+  for (const paso of job?.steps ?? []) {
+    const def = PASOS.find(([patron]) => patron.test(paso.name));
+    const peso = def ? def[2] : 1;
+    total += peso;
+    if (paso.status === 'completed') {
+      hecho += peso;
+    } else if (paso.status === 'in_progress') {
+      const seg = paso.started_at ? (Date.now() - Date.parse(paso.started_at)) / 1000 : 0;
+      hecho += peso * Math.min(0.9, Math.max(0, seg) / peso); // nunca 100% hasta que termine
+      if (def) texto = def[1] ?? textoAnalisis;
+    }
+  }
+  return { fraccion: total ? hecho / total : 0, texto };
+}
+
+// Busca la ejecución de la Action que disparó nuestro commit
+async function buscarEjecucion(shaCommit) {
+  const r = await githubLectura(`/repos/${REPO}/actions/runs?head_sha=${shaCommit}&per_page=5`);
+  if (!r.ok) return null;
+  const { workflow_runs: runs = [] } = await r.json();
+  return runs.find((run) => run.name === WORKFLOW) ?? null;
+}
+
+// La ejecución más reciente (si la nuestra se canceló porque llegó otro link,
+// la siguiente procesa todos los pendientes, incluido el nuestro)
+async function ultimaEjecucion() {
+  const r = await githubLectura(`/repos/${REPO}/actions/runs?event=push&per_page=10`);
+  if (!r.ok) return null;
+  const { workflow_runs: runs = [] } = await r.json();
+  return runs.find((run) => run.name === WORKFLOW) ?? null;
+}
+
+async function jobDe(run) {
+  const r = await githubLectura(`/repos/${REPO}/actions/runs/${run.id}/jobs`);
+  if (!r.ok) return null;
+  return (await r.json()).jobs?.[0] ?? null;
+}
+
+// ¿Ya está publicado el grafo con estas estrellas? (GitHub Pages tarda ~1 min)
+async function grafoPublicado(ids) {
+  try {
+    const r = await fetch(`graph.json?v=${Date.now()}`, { cache: 'no-store' });
+    if (!r.ok) return false;
+    const datos = await r.json();
+    return datos.nodes.some((n) => ids.includes(n.id));
+  } catch {
+    return false;
+  }
 }
 
 // --- Interfaz ----------------------------------------------------------
 // app.js nos pasa lo que necesitamos de él (así este módulo no depende de su interior).
-export function iniciarAgregar({ obtenerMeta, obtenerNodos, agregarNodoLocal, alAbrir, copiarSincrono, avisar }) {
+export function iniciarAgregar({ obtenerNodos, alAbrir, avisar }) {
   const $ = (id) => document.getElementById(id);
   const hoja = $('agregar');
   const resultado = $('resultado-fuente');
+  let trabajando = false;
 
   $('nombre-repo').textContent = REPO.split('/')[1];
 
@@ -305,6 +260,30 @@ export function iniciarAgregar({ obtenerMeta, obtenerNodos, agregarNodoLocal, al
     resultado.className = `ayuda-texto ${tipo ?? ''}`;
   }
 
+  function linkActions(textoAntes) {
+    resultado.className = 'ayuda-texto';
+    resultado.replaceChildren(
+      textoAntes,
+      Object.assign(document.createElement('a'), {
+        href: `https://github.com/${REPO}/actions`, target: '_blank', rel: 'noopener noreferrer',
+        textContent: 'GitHub Actions ↗',
+      }),
+      '.',
+    );
+  }
+
+  // Barra de avance. Nunca retrocede (los cálculos por paso pueden "saltar").
+  let porcentajeActual = 0;
+  function progreso(porcentaje, texto, esError = false) {
+    porcentajeActual = esError ? porcentajeActual : Math.max(porcentajeActual, Math.round(porcentaje));
+    $('progreso').hidden = false;
+    $('progreso').classList.toggle('error', esError);
+    $('progreso-relleno').style.width = `${porcentajeActual}%`;
+    $('progreso').querySelector('[role="progressbar"]').setAttribute('aria-valuenow', String(porcentajeActual));
+    $('progreso-texto').textContent = texto;
+    $('progreso-porcentaje').textContent = `${porcentajeActual}%`;
+  }
+
   function actualizarEstadoGithub() {
     const conectado = Boolean(leerToken());
     $('paso-github').hidden = conectado;
@@ -321,15 +300,12 @@ export function iniciarAgregar({ obtenerMeta, obtenerNodos, agregarNodoLocal, al
 
   function actualizarNotas() {
     const esPdf = tipoElegido() === 'pdf';
-    const url = $('input-url').value;
     $('nota-pdf').hidden = !esPdf;
     $('nota-link').hidden = esPdf;
-    $('btn-auto-fuente').hidden = esPdf;
-    $('btn-prompt-fuente').hidden = !esPdf;
-    $('paso-respuesta').hidden = !esPdf;
+    $('input-pdf').hidden = !esPdf;
     $('input-url').placeholder = esPdf
       ? 'Link del PDF (opcional)'
-      : 'https://… (artículo o video de YouTube)';
+      : 'https://… (artículo, página web o video de YouTube)';
   }
 
   function abrir() {
@@ -348,7 +324,6 @@ export function iniciarAgregar({ obtenerMeta, obtenerNodos, agregarNodoLocal, al
   $('cerrar-agregar').addEventListener('click', cerrar);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') cerrar(); });
   document.querySelectorAll('input[name="tipo-fuente"]').forEach((r) => r.addEventListener('change', actualizarNotas));
-  $('input-url').addEventListener('input', actualizarNotas);
 
   // Paso 1: conectar GitHub
   $('form-token').addEventListener('submit', async (e) => {
@@ -380,68 +355,92 @@ export function iniciarAgregar({ obtenerMeta, obtenerNodos, agregarNodoLocal, al
     actualizarModoEdicion();
   });
 
-  // Paso 2 (link o video): automático
+  // Sube lo necesario y devuelve { nombre, sha, textoAnalisis }
+  async function enviar(esPdf, url) {
+    const nombre = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const datos = { url: url || null, fecha: new Date().toISOString() };
+    let textoAnalisis = /youtu\.?be/i.test(url)
+      ? 'Claude está viendo la transcripción del video'
+      : 'Claude está leyendo la página';
+
+    if (esPdf) {
+      const archivo = $('input-pdf').files[0];
+      progreso(1, 'Cifrando el PDF en tu navegador…');
+      const bytes = new Uint8Array(await archivo.arrayBuffer());
+      const cifrado = await cifrarPdf(bytes);
+      progreso(2, 'Subiendo el PDF cifrado…');
+      // El .bin no dispara la Action: la dispara el .json que va después
+      await subirArchivo(`pendientes/${nombre}.bin`, bytesABase64(cifrado), 'pendiente: PDF cifrado');
+      Object.assign(datos, { tipo: 'pdf', nombre: archivo.name.slice(0, 120) });
+      textoAnalisis = 'Claude está leyendo el PDF';
+    }
+    progreso(3, 'Enviando…');
+    const sha = await subirArchivo(`pendientes/${nombre}.json`,
+      textoABase64(JSON.stringify(datos, null, 2) + '\n'),
+      esPdf ? `pendiente: PDF ${datos.nombre}` : `pendiente: ${url}`);
+    return { nombre, sha, textoAnalisis };
+  }
+
+  // Sigue la Action hasta que el pendiente quede listo o falle.
+  // Devuelve { ids } o { error }.
+  async function seguir({ nombre, sha, textoAnalisis }) {
+    const inicio = Date.now();
+    let run = null;
+    while (Date.now() - inicio < 25 * 60 * 1000) {
+      await esperar(4000);
+      run = run ?? await buscarEjecucion(sha);
+      if (!run) {
+        progreso(5, 'Esperando a que GitHub inicie el análisis…');
+        // Si a los 90 s no aparece (p. ej. se juntó con otro envío), seguimos la última
+        if (Date.now() - inicio > 90000) run = await ultimaEjecucion();
+        continue;
+      }
+      const r = await githubLectura(`/repos/${REPO}/actions/runs/${run.id}`);
+      if (r.ok) run = await r.json();
+
+      if (run.status !== 'completed') {
+        if (run.status === 'queued' || run.status === 'pending' || run.status === 'waiting') {
+          progreso(6, 'En cola: esperando a que termine otro análisis…');
+        } else {
+          const { fraccion, texto } = avanceDeJob(await jobDe(run), textoAnalisis);
+          progreso(8 + 82 * fraccion, `${texto}…`);
+        }
+        continue;
+      }
+
+      // La Action terminó: ¿qué pasó con nuestro pendiente?
+      const listo = await leerJsonRepo(`pendientes/listos/${nombre}.json`);
+      if (listo) {
+        borrarArchivoRepo(`pendientes/listos/${nombre}.json`, listo.sha);
+        return { ids: Array.isArray(listo.datos.ids) ? listo.datos.ids : [] };
+      }
+      const fallido = await leerJsonRepo(`pendientes/fallidos/${nombre}.json`);
+      if (fallido) {
+        borrarArchivoRepo(`pendientes/fallidos/${nombre}.json`, fallido.sha);
+        return { error: String(fallido.datos.error || 'No se pudo procesar.') };
+      }
+      // Ni listo ni fallido: si se canceló (llegó otro envío), lo procesa la siguiente
+      if (run.conclusion === 'cancelled' || await leerJsonRepo(`pendientes/${nombre}.json`)) {
+        const siguiente = await ultimaEjecucion();
+        if (siguiente && siguiente.id !== run.id) { run = siguiente; continue; }
+      }
+      if (run.conclusion !== 'success') {
+        return { error: 'La Action de GitHub falló. Revisa el registro en GitHub Actions.' };
+      }
+    }
+    return { error: 'Está tardando más de lo normal (25 min).' };
+  }
+
+  // Paso 2: agregar (link o PDF), todo automático
   $('btn-auto-fuente').addEventListener('click', async () => {
+    if (trabajando) return;
     if (!leerToken()) {
       mostrarResultado('Primero conecta GitHub (paso 1).', 'error');
       return;
     }
-    const url = $('input-url').value.trim();
-    if (!/^https?:\/\/\S+$/i.test(url) || url.length > 2000) {
-      mostrarResultado('Pega un link que empiece con http:// o https://', 'error');
-      return;
-    }
-    if (obtenerNodos().some((n) => n.fuente_url === url)) {
-      mostrarResultado('Ese link ya está en tu cerebro.', 'error');
-      return;
-    }
-    const boton = $('btn-auto-fuente');
-    boton.disabled = true;
-    try {
-      mostrarResultado('Enviando el link…');
-      const nombre = await crearPendiente(url);
-      $('input-url').value = '';
-      // Esperamos a la Action (normalmente 3-5 min). Máximo 20 min.
-      const inicio = Date.now();
-      while (Date.now() - inicio < 20 * 60 * 1000) {
-        const min = Math.floor((Date.now() - inicio) / 60000);
-        mostrarResultado(`⏳ Claude está leyendo y resumiendo el link… (${min} min). ` +
-          'Puedes cerrar este panel; no cierres la pestaña.');
-        await esperar(15000);
-        const estado = await estadoPendiente(nombre);
-        if (estado === 'procesando') continue;
-        if (estado === 'listo') {
-          // La Action ya guardó todo; GitHub Pages tarda ~1 min más en publicarlo
-          mostrarResultado('✓ ¡Listo! Publicando las estrellas nuevas… la página se recargará en un minuto.', 'ok');
-          avisar('Fuente agregada ✓', 6000);
-          await esperar(75000);
-          window.location.reload();
-          return;
-        }
-        mostrarResultado(`✘ ${estado.error}`, 'error');
-        return;
-      }
-      resultado.className = 'ayuda-texto';
-      resultado.replaceChildren(
-        'Está tardando más de lo normal. Revisa el estado en ',
-        Object.assign(document.createElement('a'), {
-          href: `https://github.com/${REPO}/actions`, target: '_blank', rel: 'noopener noreferrer',
-          textContent: 'GitHub Actions ↗',
-        }),
-        '.',
-      );
-    } catch (err) {
-      mostrarResultado(err.message, 'error');
-    } finally {
-      boton.disabled = false;
-    }
-  });
-
-  // Paso 2 (PDF): copiar el prompt y abrir Claude
-  $('btn-prompt-fuente').addEventListener('click', () => {
     const esPdf = tipoElegido() === 'pdf';
     const url = $('input-url').value.trim();
-    if ((!esPdf || url) && !/^https?:\/\/\S+$/i.test(url)) {
+    if ((url || !esPdf) && (!/^https?:\/\/\S+$/i.test(url) || url.length > 2000)) {
       mostrarResultado('Pega un link que empiece con http:// o https://', 'error');
       return;
     }
@@ -449,59 +448,48 @@ export function iniciarAgregar({ obtenerMeta, obtenerNodos, agregarNodoLocal, al
       mostrarResultado('Ese link ya está en tu cerebro.', 'error');
       return;
     }
-    mostrarResultado('');
-    const prompt = armarPrompt({ perfil: obtenerMeta().perfil, url, esPdf });
-    const copiado = copiarSincrono(prompt); // copiar ANTES de abrir la pestaña
-    window.open('https://claude.ai/new', '_blank', 'noopener');
-    avisar(copiado
-      ? `Prompt copiado ✓ Pégalo en Claude${esPdf ? ' y adjunta el PDF' : ''}`
-      : 'No se pudo copiar el prompt', 6000);
-  });
-
-  // Paso 3: guardar la respuesta en el repositorio
-  $('btn-guardar-fuente').addEventListener('click', async () => {
-    if (!leerToken()) {
-      mostrarResultado('Primero conecta GitHub (paso 1).', 'error');
-      return;
-    }
-    let r;
-    try {
-      r = leerRespuesta($('input-respuesta').value);
-    } catch (err) {
-      mostrarResultado(err.message, 'error');
-      return;
+    if (esPdf) {
+      const archivo = $('input-pdf').files[0];
+      if (!archivo) { mostrarResultado('Elige un archivo PDF.', 'error'); return; }
+      if (archivo.size > MAX_BYTES_PDF) {
+        mostrarResultado(`El PDF pesa ${(archivo.size / 1e6).toFixed(1)} MB (máximo 20 MB).`, 'error');
+        return;
+      }
     }
 
-    const url = $('input-url').value.trim() || null;
-    if (url && !/^https?:\/\/\S+$/i.test(url)) {
-      mostrarResultado('El link debe empezar con http:// o https://', 'error');
-      return;
-    }
-    const fecha = new Date().toLocaleDateString('sv-SE'); // formato AAAA-MM-DD, hora local
-    const boton = $('btn-guardar-fuente');
+    trabajando = true;
+    const boton = $('btn-auto-fuente');
     boton.disabled = true;
-    mostrarResultado('Guardando en GitHub…');
+    porcentajeActual = 0;
+    mostrarResultado('');
     try {
-      const id = await crearArchivoFuente((nuevoId) => armarMarkdown(nuevoId, r, url, fecha), r.titulo);
-      // Lo mostramos al tiro (sin conexiones); la GitHub Action calcula los enlaces
-      agregarNodoLocal({
-        id, titulo: r.titulo, tipo: 'fuente', contenido: armarContenido(r),
-        fecha, fuente_url: url, padres: [],
-      });
-      $('input-respuesta').value = '';
+      const envio = await enviar(esPdf, url);
       $('input-url').value = '';
-      resultado.className = 'ayuda-texto ok';
-      resultado.replaceChildren(
-        `✓ Guardada como ${id}. Las conexiones aparecerán en 2-4 minutos, cuando GitHub termine de `,
-        Object.assign(document.createElement('a'), {
-          href: `https://github.com/${REPO}/actions`, target: '_blank', rel: 'noopener noreferrer',
-          textContent: 'reconstruir el grafo ↗',
-        }),
-        '. Recarga la página para verlas.',
-      );
+      $('input-pdf').value = '';
+      const fin = await seguir(envio);
+      if (fin.error) {
+        progreso(porcentajeActual, 'No se pudo agregar', true);
+        mostrarResultado(`✘ ${fin.error}`, 'error');
+        return;
+      }
+      // Listo en el repo; falta que GitHub Pages publique el grafo nuevo
+      const inicio = Date.now();
+      while (Date.now() - inicio < 5 * 60 * 1000) {
+        const seg = (Date.now() - inicio) / 1000;
+        progreso(92 + 7 * Math.min(1, seg / 90), 'Publicando las estrellas nuevas…');
+        if (fin.ids.length === 0 || await grafoPublicado(fin.ids)) break;
+        await esperar(5000);
+      }
+      progreso(100, '¡Listo! Mostrando tus estrellas nuevas');
+      avisar('Fuente agregada ✓', 4000);
+      await esperar(1200);
+      window.location.reload();
     } catch (err) {
-      mostrarResultado(err.message, 'error');
+      progreso(porcentajeActual, 'No se pudo agregar', true);
+      if (err instanceof TypeError) linkActions('Se perdió la conexión. Revisa el estado en ');
+      else mostrarResultado(err.message, 'error');
     } finally {
+      trabajando = false;
       boton.disabled = false;
     }
   });

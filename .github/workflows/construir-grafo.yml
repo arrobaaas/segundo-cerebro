@@ -62,13 +62,14 @@ jobs:
           pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install -r requirements.txt
 
-      # Solo si la página dejó links pendientes. La key existe únicamente en este
-      # paso (no en los demás) y GitHub la oculta si aparece en los registros.
+      # Solo si la página dejó links o PDFs pendientes. Las claves existen únicamente
+      # en este paso (no en los demás) y GitHub las oculta si aparecen en los registros.
       - name: Procesar links agregados desde la página
         if: hashFiles('pendientes/*.json') != ''
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           YOUTUBE_PROXY: ${{ secrets.YOUTUBE_PROXY }}
+          PDF_PRIVATE_KEY: ${{ secrets.PDF_PRIVATE_KEY }}
         run: python scripts/procesar_pendientes.py
 
       - name: Construir graph.json

@@ -710,23 +710,9 @@ async function cargar() {
 
 // --- Agregar fuentes desde la web ----------------------------------
 
-// Agrega un nodo al grafo en pantalla sin recargar (todavía sin enlaces: los
-// calcula la GitHub Action con los embeddings y aparecen al recargar).
-function agregarNodoLocal(nodo) {
-  nodosPorId.set(nodo.id, nodo);
-  vecinosPorId.set(nodo.id, new Set());
-  enlacesPorId.set(nodo.id, new Set());
-  const { nodes, links } = Grafo.graphData();
-  Grafo.graphData({ nodes: [...nodes, nodo], links });
-  construirLeyenda([...nodosPorId.values()]);
-}
-
 const hojaAgregar = iniciarAgregar({
-  obtenerMeta: () => meta,
   obtenerNodos: () => [...nodosPorId.values()],
-  agregarNodoLocal,
   alAbrir: limpiarSeleccion,
-  copiarSincrono,
   avisar,
 });
 

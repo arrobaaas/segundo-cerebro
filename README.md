@@ -103,14 +103,16 @@ Funciona también desde el celular, sin terminal:
    [token fine-grained](https://github.com/settings/personal-access-tokens/new) con acceso
    *solo* a este repositorio y permiso **Contents: Read and write**, y pégalo en la página.
    Se guarda únicamente en ese navegador (`localStorage`), nunca en el código.
-2. **Links y videos de YouTube (automático):** pega el link → **Agregar al cerebro ✦**.
-   La página deja `pendientes/<id>.json` en el repo y la GitHub Action
-   [`construir-grafo`](.github/workflows/construir-grafo.yml) saca la transcripción o el
-   texto, lo resume con la API de Claude, crea `fuentes/fuente-XXX.md` y recalcula el grafo.
-   En 3-5 minutos la página se recarga sola con las estrellas nuevas. Si algo falla, la
-   página muestra el error (la Action lo deja en `pendientes/fallidos/`).
-3. **PDF (manual):** elige **PDF** → **Copiar prompt y abrir Claude**, adjunta el PDF en
-   claude.ai, copia el JSON que responde y pégalo → **Guardar en el cerebro**.
+2. Pega un link (**artículo, página web o video de YouTube**) o elige **PDF** y sube el
+   archivo → **Agregar al cerebro ✦**. Todo es automático: no hay que copiar prompts.
+   - La página deja `pendientes/<id>.json` en el repo (los PDF van **cifrados** en
+     `pendientes/<id>.bin`: el repo es público, pero solo la Action puede leerlos).
+   - La GitHub Action [`construir-grafo`](.github/workflows/construir-grafo.yml) saca la
+     transcripción del video, el texto de la página o lee el PDF, lo resume con la API de
+     Claude, crea `fuentes/fuente-XXX.md` y recalcula el grafo.
+   - La página muestra una **barra con el porcentaje de avance** (sigue cada paso de la
+     Action) y se recarga sola con las estrellas nuevas en 2-4 minutos. Si algo falla,
+     muestra el error.
 
 #### Configuración del modo automático (una vez)
 
@@ -119,7 +121,13 @@ Funciona también desde el celular, sin terminal:
 2. Guárdala como secreto del repositorio, desde la terminal:
    `gh secret set ANTHROPIC_API_KEY` (pega la key cuando la pida), o en GitHub →
    Settings → Secrets and variables → Actions → *New repository secret*.
-3. *(Opcional)* Si YouTube bloquea a los servidores de GitHub ("YouTube está bloqueando
+3. Para los PDF: guarda la clave privada de descifrado como secreto `PDF_PRIVATE_KEY`
+   (su pareja pública está en `web/agregar.js`). Para generar un par nuevo:
+   `openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 -out privada.pem`, guarda
+   `privada.pem` con `gh secret set PDF_PRIVATE_KEY < privada.pem`, pega en
+   `CLAVE_PUBLICA_PDF` el resultado de
+   `openssl pkey -in privada.pem -pubout -outform DER | base64 -w0` y borra `privada.pem`.
+4. *(Opcional)* Si YouTube bloquea a los servidores de GitHub ("YouTube está bloqueando
    las solicitudes"), agrega el secreto `YOUTUBE_PROXY` con la dirección de un proxy
    (`http://usuario:clave@host:puerto`).
 
