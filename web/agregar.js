@@ -1,12 +1,17 @@
 // ============================================================
 // Agregar fuentes desde la web.
 //
-// Flujo:
-//   1. Armamos un prompt (perfil + link o PDF + formato JSON) y abrimos claude.ai.
-//   2. El usuario pega la respuesta de Claude (JSON) en la página.
-//   3. Validamos el JSON y creamos fuentes/fuente-XXX.md en el repositorio usando
-//      la API de GitHub, con un token que el usuario guarda en su navegador.
-//   4. Una GitHub Action recalcula los embeddings y actualiza graph.json.
+// Flujo automático (links y videos de YouTube):
+//   1. La página guarda pendientes/<id>.json con el link en el repositorio, usando
+//      la API de GitHub con un token que el usuario guarda en su navegador.
+//   2. Una GitHub Action (con la API key de Claude como secreto de GitHub, nunca
+//      en esta página) saca la transcripción o el texto, lo resume con Claude,
+//      crea fuentes/fuente-XXX.md y reconstruye graph.json.
+//   3. La página consulta cada pocos segundos si ya terminó y se recarga sola.
+//      Si falló, la Action deja pendientes/fallidos/<id>.json con el error.
+//
+// Flujo manual (PDF): armamos un prompt, el usuario adjunta el PDF en claude.ai,
+// pega la respuesta (JSON) y la página crea fuentes/fuente-XXX.md.
 //
 // ¿Por qué un token? La página es estática (GitHub Pages): no hay un servidor
 // propio que pueda escribir en el repo. El token es una "llave" con permiso solo
@@ -119,7 +124,46 @@ async function crearArchivoFuente(armarMarkdown, titulo) {
   throw new Error('No se pudo encontrar un id libre. Inténtalo de nuevo.');
 }
 
-// --- Prompt para Claude ---------------------------------------------
+// --- Flujo automático: pendientes/ ------------------------------------
+function deBase64(b64) {
+  const binario = atob(b64.replace(/\s/g, ''));
+  return new TextDecoder().decode(Uint8Array.from(binario, (c) => c.charCodeAt(0)));
+}
+
+// Deja el link en pendientes/: eso dispara la GitHub Action
+async function crearPendiente(url) {
+  const nombre = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.json`;
+  const contenido = JSON.stringify({ url, fecha: new Date().toISOString() }, null, 2) + '\n';
+  const r = await github(`/repos/${REPO}/contents/pendientes/${nombre}`, {
+    method: 'PUT',
+    body: JSON.stringify({ message: `pendiente: ${url}`, content: aBase64(contenido) }),
+  });
+  if (!r.ok) throw new Error(explicarErrorGithub(r.status));
+  return nombre;
+}
+
+// Estado de un pendiente: 'procesando' | 'listo' | { error }
+async function estadoPendiente(nombre) {
+  const sinCache = { cache: 'no-store' };
+  const r = await github(`/repos/${REPO}/contents/pendientes/${nombre}`, sinCache);
+  if (r.ok) return 'procesando';
+  if (r.status !== 404) return 'procesando'; // error pasajero: seguimos esperando
+  const f = await github(`/repos/${REPO}/contents/pendientes/fallidos/${nombre}`, sinCache);
+  if (!f.ok) return 'listo';
+  const archivo = await f.json();
+  let error = 'No se pudo procesar el link.';
+  try { error = JSON.parse(deBase64(archivo.content)).error || error; } catch { /* mensaje genérico */ }
+  // Lo borramos para que no se acumulen (si falla, no importa)
+  github(`/repos/${REPO}/contents/pendientes/fallidos/${nombre}`, {
+    method: 'DELETE',
+    body: JSON.stringify({ message: 'pendiente: limpiar error', sha: archivo.sha }),
+  }).catch(() => {});
+  return { error: String(error) };
+}
+
+const esperar = (ms) => new Promise((ok) => setTimeout(ok, ms));
+
+// --- Prompt para Claude (flujo manual, PDF) --------------------------
 const FORMATO = `Responde ÚNICAMENTE con un JSON dentro de un bloque \`\`\`json, sin texto antes ni
 después, con exactamente esta forma:
 
@@ -279,7 +323,10 @@ export function iniciarAgregar({ obtenerMeta, obtenerNodos, agregarNodoLocal, al
     const esPdf = tipoElegido() === 'pdf';
     const url = $('input-url').value;
     $('nota-pdf').hidden = !esPdf;
-    $('nota-youtube').hidden = esPdf || !/youtu\.?be/i.test(url);
+    $('nota-link').hidden = esPdf;
+    $('btn-auto-fuente').hidden = esPdf;
+    $('btn-prompt-fuente').hidden = !esPdf;
+    $('paso-respuesta').hidden = !esPdf;
     $('input-url').placeholder = esPdf
       ? 'Link del PDF (opcional)'
       : 'https://… (artículo o video de YouTube)';
@@ -333,7 +380,64 @@ export function iniciarAgregar({ obtenerMeta, obtenerNodos, agregarNodoLocal, al
     actualizarModoEdicion();
   });
 
-  // Paso 2: copiar el prompt y abrir Claude
+  // Paso 2 (link o video): automático
+  $('btn-auto-fuente').addEventListener('click', async () => {
+    if (!leerToken()) {
+      mostrarResultado('Primero conecta GitHub (paso 1).', 'error');
+      return;
+    }
+    const url = $('input-url').value.trim();
+    if (!/^https?:\/\/\S+$/i.test(url) || url.length > 2000) {
+      mostrarResultado('Pega un link que empiece con http:// o https://', 'error');
+      return;
+    }
+    if (obtenerNodos().some((n) => n.fuente_url === url)) {
+      mostrarResultado('Ese link ya está en tu cerebro.', 'error');
+      return;
+    }
+    const boton = $('btn-auto-fuente');
+    boton.disabled = true;
+    try {
+      mostrarResultado('Enviando el link…');
+      const nombre = await crearPendiente(url);
+      $('input-url').value = '';
+      // Esperamos a la Action (normalmente 3-5 min). Máximo 20 min.
+      const inicio = Date.now();
+      while (Date.now() - inicio < 20 * 60 * 1000) {
+        const min = Math.floor((Date.now() - inicio) / 60000);
+        mostrarResultado(`⏳ Claude está leyendo y resumiendo el link… (${min} min). ` +
+          'Puedes cerrar este panel; no cierres la pestaña.');
+        await esperar(15000);
+        const estado = await estadoPendiente(nombre);
+        if (estado === 'procesando') continue;
+        if (estado === 'listo') {
+          // La Action ya guardó todo; GitHub Pages tarda ~1 min más en publicarlo
+          mostrarResultado('✓ ¡Listo! Publicando las estrellas nuevas… la página se recargará en un minuto.', 'ok');
+          avisar('Fuente agregada ✓', 6000);
+          await esperar(75000);
+          window.location.reload();
+          return;
+        }
+        mostrarResultado(`✘ ${estado.error}`, 'error');
+        return;
+      }
+      resultado.className = 'ayuda-texto';
+      resultado.replaceChildren(
+        'Está tardando más de lo normal. Revisa el estado en ',
+        Object.assign(document.createElement('a'), {
+          href: `https://github.com/${REPO}/actions`, target: '_blank', rel: 'noopener noreferrer',
+          textContent: 'GitHub Actions ↗',
+        }),
+        '.',
+      );
+    } catch (err) {
+      mostrarResultado(err.message, 'error');
+    } finally {
+      boton.disabled = false;
+    }
+  });
+
+  // Paso 2 (PDF): copiar el prompt y abrir Claude
   $('btn-prompt-fuente').addEventListener('click', () => {
     const esPdf = tipoElegido() === 'pdf';
     const url = $('input-url').value.trim();

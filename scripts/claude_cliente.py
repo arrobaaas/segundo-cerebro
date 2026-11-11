@@ -55,7 +55,7 @@ def _llamar(**kwargs):
     except anthropic.AuthenticationError:
         raise ErrorClaude(
             "La API key no es válida o no está configurada.\n"
-            "  Copia .env.example a .env y pon tu key (https://console.anthropic.com/)."
+            "  Revisa ANTHROPIC_API_KEY: en tu .env (local) o en los secretos del repo (GitHub)."
         ) from None
     except anthropic.PermissionDeniedError as e:
         raise ErrorClaude(f"La key no tiene permiso: {e.message}") from None

@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 import urllib.parse
@@ -78,7 +79,15 @@ def extraer_youtube(video_id: str) -> str:
     from youtube_transcript_api import (CouldNotRetrieveTranscript, IpBlocked,
                                         RequestBlocked, TranscriptsDisabled)
 
-    api = YouTubeTranscriptApi()
+    # YouTube suele bloquear a los servidores en la nube (como los de GitHub Actions).
+    # Si pasa, se puede usar un proxy poniendo su dirección en YOUTUBE_PROXY
+    # (ej. http://usuario:clave@proxy:puerto). Sin esa variable, conexión directa.
+    proxy = os.environ.get("YOUTUBE_PROXY", "").strip()
+    if proxy:
+        from youtube_transcript_api.proxies import GenericProxyConfig
+        api = YouTubeTranscriptApi(proxy_config=GenericProxyConfig(http_url=proxy, https_url=proxy))
+    else:
+        api = YouTubeTranscriptApi()
     try:
         # Preferimos subtítulos en español y luego en inglés...
         transcripcion = api.fetch(video_id, languages=["es", "es-419", "es-ES", "en"])
@@ -240,7 +249,7 @@ def main(argv: list[str] | None = None) -> int:
         repetida = next((n for n in leer_nodos() if n.fuente_url == url), None)
         if repetida:
             print(f"Esa URL ya está en el grafo como {repetida.id} ({repetida.titulo}). "
-                  "Usa --forzar para agregarla igual.")
+                  "Usa --forzar para agregarla igual.", file=sys.stderr)
             return 1
 
     # 1) Extraer

@@ -1,8 +1,9 @@
-# GitHub Action: reconstruye web/graph.json cada vez que cambian los nodos.
+# GitHub Action: procesa los links agregados desde la página y reconstruye
+# web/graph.json cada vez que cambian los nodos.
 #
-# Así puedes agregar fuentes desde la página web (o desde cualquier lado) y el
-# grafo se actualiza solo: GitHub ejecuta build_graph.py en un servidor suyo,
-# guarda el nuevo graph.json en el repo y vuelve a publicar la página.
+# Flujo automático: la página deja pendientes/<id>.json con un link; aquí se
+# resume con la API de Claude (la key es un secreto de GitHub, nunca está en la
+# página), se crea la fuente, se reconstruye el grafo y se vuelve a publicar.
 
 name: Construir grafo
 
@@ -14,6 +15,7 @@ on:
       - "ideas/**"
       - "fuentes/**"
       - "fusionadas/**"
+      - "pendientes/*.json"
       - "planes/**"
       - "perfil.md"
       - "scripts/**"
@@ -60,18 +62,29 @@ jobs:
           pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install -r requirements.txt
 
+      # Solo si la página dejó links pendientes. La key existe únicamente en este
+      # paso (no en los demás) y GitHub la oculta si aparece en los registros.
+      - name: Procesar links agregados desde la página
+        if: hashFiles('pendientes/*.json') != ''
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          YOUTUBE_PROXY: ${{ secrets.YOUTUBE_PROXY }}
+        run: python scripts/procesar_pendientes.py
+
       - name: Construir graph.json
         run: python scripts/build_graph.py
 
-      - name: Guardar graph.json si cambió
+      - name: Guardar cambios (fuentes nuevas, pendientes y graph.json)
         run: |
-          if git diff --quiet web/graph.json; then
-            echo "graph.json no cambió"
+          git add -A web/graph.json fuentes
+          # pendientes/ puede no existir (aún no se agregó nada desde la página)
+          git add -A pendientes 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "No hay cambios que guardar"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add web/graph.json
           git commit -m "grafo: reconstruido automáticamente"
           # Por si hubo otro push mientras construíamos
           git pull --rebase

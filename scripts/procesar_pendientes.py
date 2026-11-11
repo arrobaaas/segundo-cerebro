@@ -1,0 +1,100 @@
+"""
+Procesa los links que dejó la página web en pendientes/ (lo ejecuta la GitHub Action).
+
+Flujo automático (sin copiar prompts):
+    1. En la página pegas un link y aprietas "Agregar al cerebro".
+    2. La página guarda pendientes/<id>.json con {"url": ...} en el repositorio.
+    3. La GitHub Action corre este script: por cada pendiente usa agregar_fuente.py
+       (transcripción de YouTube o texto de la web → resumen con la API de Claude →
+       fuentes/fuente-XXX.md) y borra el pendiente.
+    4. Si algo falla, deja pendientes/fallidos/<id>.json con el error, para que la
+       página te lo muestre.
+    5. Luego la Action reconstruye graph.json y aparecen las estrellas nuevas.
+
+La API key viene del secreto ANTHROPIC_API_KEY de GitHub: nunca está en la página.
+
+Uso local (opcional, con tu .env):
+    python scripts/procesar_pendientes.py
+"""
+
+from __future__ import annotations
+
+import contextlib
+import io
+import json
+import os
+import re
+import sys
+
+from cerebro import RAIZ
+
+import agregar_fuente
+
+PENDIENTES = RAIZ / "pendientes"
+FALLIDOS = PENDIENTES / "fallidos"
+
+# Tope por ejecución: si por error se agregan muchos links, no se gasta de más.
+MAX_POR_EJECUCION = 10
+
+
+def leer_url(archivo) -> str:
+    try:
+        datos = json.loads(archivo.read_text(encoding="utf-8"))
+        return str(datos.get("url", "")).strip()
+    except (ValueError, AttributeError, OSError):
+        return ""
+
+
+def procesar(url: str) -> str | None:
+    """Agrega la fuente. Devuelve None si salió bien, o el mensaje de error."""
+    if not re.fullmatch(r"https?://\S{1,2000}", url):
+        return "El link no es válido (debe empezar con http:// o https://)."
+
+    errores = io.StringIO()
+    with contextlib.redirect_stderr(errores):
+        try:
+            codigo = agregar_fuente.main([url, "--sin-build"])
+        except Exception as e:  # que un link malo no detenga a los demás
+            print(f"✘ Error inesperado: {type(e).__name__}", file=sys.stderr)
+            codigo = 1
+    salida = errores.getvalue()
+    sys.stderr.write(salida)  # que quede también en el registro de la Action
+    if codigo == 0:
+        return None
+    lineas = [l.strip().removeprefix("✘").strip() for l in salida.splitlines() if l.strip()]
+    return (" ".join(lineas) or "No se pudo procesar el link.")[:500]
+
+
+def main() -> int:
+    archivos = sorted(PENDIENTES.glob("*.json"))
+    if not archivos:
+        print("No hay links pendientes.")
+        return 0
+
+    sin_key = not os.environ.get("ANTHROPIC_API_KEY") and not (RAIZ / ".env").exists()
+    for archivo in archivos[:MAX_POR_EJECUCION]:
+        url = leer_url(archivo)
+        print(f"\n=== {archivo.name}: {url}")
+        if sin_key:
+            error = ("Falta la API key: agrega el secreto ANTHROPIC_API_KEY en GitHub "
+                     "(Settings → Secrets and variables → Actions).")
+        else:
+            error = procesar(url)
+        if error:
+            FALLIDOS.mkdir(parents=True, exist_ok=True)
+            (FALLIDOS / archivo.name).write_text(
+                json.dumps({"url": url, "error": error}, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            print(f"✘ Falló: {error}")
+        else:
+            print("✔ Listo")
+        archivo.unlink()
+
+    if len(archivos) > MAX_POR_EJECUCION:
+        print(f"\nQuedan {len(archivos) - MAX_POR_EJECUCION} pendientes para la próxima ejecución.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

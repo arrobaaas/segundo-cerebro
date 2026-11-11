@@ -103,16 +103,25 @@ Funciona también desde el celular, sin terminal:
    [token fine-grained](https://github.com/settings/personal-access-tokens/new) con acceso
    *solo* a este repositorio y permiso **Contents: Read and write**, y pégalo en la página.
    Se guarda únicamente en ese navegador (`localStorage`), nunca en el código.
-2. Pega el link de un artículo o video (o elige **PDF**) → **Copiar prompt y abrir Claude**.
-   Claude lee la fuente con tu cuenta de claude.ai (en PDF, adjúntalo en el chat).
-3. Copia el JSON que responde Claude, pégalo en la página → **Guardar en el cerebro**.
-4. La página crea `fuentes/fuente-XXX.md` en el repo, y la GitHub Action
-   [`construir-grafo`](.github/workflows/construir-grafo.yml) recalcula los embeddings y
-   actualiza `graph.json` (2-4 minutos).
+2. **Links y videos de YouTube (automático):** pega el link → **Agregar al cerebro ✦**.
+   La página deja `pendientes/<id>.json` en el repo y la GitHub Action
+   [`construir-grafo`](.github/workflows/construir-grafo.yml) saca la transcripción o el
+   texto, lo resume con la API de Claude, crea `fuentes/fuente-XXX.md` y recalcula el grafo.
+   En 3-5 minutos la página se recarga sola con las estrellas nuevas. Si algo falla, la
+   página muestra el error (la Action lo deja en `pendientes/fallidos/`).
+3. **PDF (manual):** elige **PDF** → **Copiar prompt y abrir Claude**, adjunta el PDF en
+   claude.ai, copia el JSON que responde y pégalo → **Guardar en el cerebro**.
 
-> Con **videos de YouTube**, Claude a veces no logra leer la transcripción (si pasa, responde
-> con un error en vez de inventar). Para videos, lo más confiable es la terminal (abajo),
-> que descarga la transcripción directamente.
+#### Configuración del modo automático (una vez)
+
+1. Crea una API key en [console.anthropic.com](https://console.anthropic.com/) (es de pago
+   por uso, aparte de la suscripción de claude.ai; cada fuente cuesta centavos de dólar).
+2. Guárdala como secreto del repositorio, desde la terminal:
+   `gh secret set ANTHROPIC_API_KEY` (pega la key cuando la pida), o en GitHub →
+   Settings → Secrets and variables → Actions → *New repository secret*.
+3. *(Opcional)* Si YouTube bloquea a los servidores de GitHub ("YouTube está bloqueando
+   las solicitudes"), agrega el secreto `YOUTUBE_PROXY` con la dirección de un proxy
+   (`http://usuario:clave@host:puerto`).
 
 > **Seguridad del token:** si alguien lo obtuviera, solo podría modificar este repositorio.
 > Ponle fecha de expiración y, si lo pierdes, revócalo en GitHub → Settings → Developer settings.
@@ -253,12 +262,12 @@ tú puedes crear. Si una visita usa "Copiar y abrir Claude", se abre *su propia*
 
 | Qué | Cómo se protege |
 |---|---|
-| API key de Anthropic | Solo en `.env` (en `.gitignore`), nunca en la web ni en el repo |
+| API key de Anthropic | En `.env` (local, en `.gitignore`) o como **secreto** de GitHub para la Action. Nunca en la web ni en el repo; solo existe en el paso que la usa |
 | Subir una clave por error | Hook `pre-commit` local (bloquea claves y `.env`) + *secret scanning* con *push protection* de GitHub |
 | Token de GitHub | Solo *fine-grained* (un repo, permiso *Contents*); se rechazan los clásicos `ghp_`. Vive solo en el `localStorage` de tu navegador |
 | Código de terceros | Librerías JS dentro del repo (`web/vendor/`, con sus huellas SHA-256 en `versiones.json`), sin CDN |
 | Inyección de código (XSS) | Todo el texto se inserta con `textContent`; la CSP prohíbe scripts externos e *inline* |
-| GitHub Action | Solo corre con pushes a `main`; Actions fijadas a un commit (SHA); permisos mínimos |
+| GitHub Action | Solo corre con pushes a `main` (solo tú puedes, con tu token); Actions fijadas a un commit (SHA); permisos mínimos; máximo 10 links por ejecución para no gastar de más; los links se validan (`http(s)` solamente) |
 
 **Al clonar el repo en otro computador**, activa el hook:
 
