@@ -1,327 +1,319 @@
+<div align="center">
+
 # 🧠 Segundo Cerebro
 
-> Un grafo 3D de ideas que aprende de los links y videos que le doy,
-> combina ideas relacionadas y me propone nuevas ideas.
+**Grafo 3D de conocimiento que aprende de videos, artículos y PDFs, y los convierte en ideas de proyecto conectadas por significado.**
 
-## Estado del proyecto
+[![Demo en vivo](https://img.shields.io/badge/demo-en%20vivo-a855f7?style=for-the-badge)](https://arrobaaas.github.io/segundo-cerebro/web/)
 
-🚧 En construcción: fase 1 ✅ · fase 2 ✅ · fase 3 en prueba.
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-ES%20modules-F7DF1E?logo=javascript&logoColor=black)
+![Three.js](https://img.shields.io/badge/Three.js-3D-000000?logo=threedotjs&logoColor=white)
+![GitHub Actions](https://img.shields.io/badge/CI-GitHub%20Actions-2088FF?logo=githubactions&logoColor=white)
+![Claude](https://img.shields.io/badge/IA-Claude-D97757)
+![Embeddings](https://img.shields.io/badge/NLP-sentence--transformers-FF6F00)
 
-👉 **Ver en vivo:** https://arrobaaas.github.io/segundo-cerebro/web/
+<img src="docs/captura-galaxias.png" alt="Vista de galaxias: las ideas agrupadas por tema, con la lista lateral abierta" width="900">
 
-## Fases
+</div>
 
-| # | Fase | Descripción |
-|---|------|-------------|
-| 1 | Visor 3D | Web con graph.json de ejemplo: rotación, zoom, clic en nodo, panel de detalle, colores por tipo |
-| 2 | Ideas manuales | `scripts/agregar_idea.py` genera el .md; `scripts/build_graph.py` calcula embeddings, enlaces por similitud y exporta graph.json |
-| 3 | Aprender de links | `scripts/agregar_fuente.py <url>` → transcript YouTube / texto web → resumen con Claude → nodo fuente → rebuild |
-| 4 | Ideas fusionadas | `scripts/fusionar.py "pedido"` → busca nodos similares → Claude fusiona → guarda en /fusionadas → rebuild |
-| 5 | Extras | GitHub Action, buscador en web, slider de umbral de similitud |
+---
 
-## Stack
+## Tabla de contenidos
 
-- **Frontend**: HTML + JS + [3d-force-graph](https://github.com/vasturiano/3d-force-graph) (Three.js + física de fuerzas). Sin framework. GitHub Pages.
-- **Datos**: Markdown con frontmatter por nodo en `ideas/`, `fuentes/` y `fusionadas/`.
-- **Procesamiento**: Python (`build_graph.py`, `agregar_fuente.py`, `fusionar.py`).
-- **Similitud**: embeddings con `sentence-transformers` (paraphrase-multilingual-MiniLM-L12-v2), umbral de similitud configurable.
-- **IA generativa**: API de Claude (Anthropic) para resumir fuentes y fusionar ideas. La key va en `.env` (gitignored).
+- [El problema](#el-problema)
+- [Características](#características)
+- [Arquitectura](#arquitectura)
+- [Stack tecnológico](#stack-tecnológico)
+- [Decisiones técnicas](#decisiones-técnicas)
+- [Instalación](#instalación)
+- [Uso](#uso)
+- [Configuración del modo automático](#configuración-del-modo-automático)
+- [Estructura del proyecto](#estructura-del-proyecto)
+- [Formato de los datos](#formato-de-los-datos)
+- [Seguridad](#seguridad)
+- [Hoja de ruta](#hoja-de-ruta)
 
-## Puesta en marcha
+## El problema
+
+Consumo muchos videos, artículos y documentos técnicos, pero lo aprendido queda disperso y
+rara vez se transforma en algo concreto. **Segundo Cerebro** resuelve eso:
+
+1. **Captura** una fuente (link de YouTube, página web o PDF) con un solo clic desde la web o el celular.
+2. **Resume** su contenido con IA, enfocado en un perfil profesional concreto, y propone
+   **ideas de proyecto viables** con su MVP.
+3. **Conecta** cada nodo con los demás por **similitud semántica** (embeddings), sin etiquetas manuales.
+4. **Visualiza** todo como un grafo 3D navegable, agrupable en "galaxias" por tema.
+
+## Características
+
+| | |
+|---|---|
+| 🌌 **Visor 3D interactivo** | Grafo de fuerzas con estrellas, brillo (*bloom*), zoom y rotación. Funciona en escritorio y celular. |
+| 🪐 **Modo galaxias** | Separa las ideas en una galaxia por tema (web, IA, datos, ciberseguridad, videojuegos…), con nebulosa y nombre. Un botón las vuelve a juntar. |
+| 📚 **Lista lateral** | Panel ocultable con todas las ideas agrupadas por tema y un buscador que ignora mayúsculas y tildes. |
+| 🎨 **Tipos de fuente** | Idea, Video, Página web, PDF y Fusionada, cada uno con su color. |
+| ⚡ **Ingesta automática** | Pegas un link o subes un PDF y una **barra de progreso** sigue en vivo cada paso del análisis hasta que aparece la estrella nueva. |
+| 🧩 **Clasificación por tema** | Claude elige el tema de cada fuente nueva; los nodos sin tema se clasifican solos por similitud de embeddings. |
+| 🛠️ **Planes de desarrollo** | Genera un plan por fases (objetivo, tareas, entregable, criterio de terminado y un *prompt* listo por fase) para convertir una idea en proyecto. |
+| 🔒 **Seguro por diseño** | Sin claves en el navegador, PDFs cifrados de extremo a extremo, CSP estricta y dependencias fijadas. |
+
+<details>
+<summary><b>Ver la vista normal del grafo</b></summary>
+<br>
+<img src="docs/captura-grafo.png" alt="Grafo 3D de ideas conectadas por similitud" width="900">
+</details>
+
+## Arquitectura
+
+La aplicación es **100 % estática** (GitHub Pages): no hay servidor propio. El repositorio
+funciona como base de datos y cola de trabajos, y el procesamiento ocurre en GitHub Actions
+o, para los videos, en el computador local.
+
+```mermaid
+flowchart LR
+    W["🌐 Página web<br/>(GitHub Pages)"] -- "API de GitHub<br/>token fine-grained" --> P[("📂 Repositorio<br/>pendientes/")]
+    P -- "push" --> A["⚙️ GitHub Action"]
+    P -- "videos" --> L["💻 Servicio local<br/>(systemd)"]
+    A -- "texto web · PDF descifrado" --> C["🤖 Claude<br/>salida estructurada"]
+    L -- "transcripción" --> C
+    C --> F["📝 fuentes/*.md"]
+    F --> E["🧮 Embeddings<br/>similitud coseno"]
+    E --> G["graph.json"]
+    G --> W
+```
+
+**Flujo de una fuente nueva:**
+
+1. La página guarda `pendientes/<id>.json` en el repositorio usando la API de GitHub.
+   Los PDF se **cifran en el navegador** (`RSA-OAEP` + `AES-256-GCM`) antes de subirse.
+2. El *push* dispara la Action, que extrae el texto (`trafilatura`) o descifra el PDF y pide a
+   Claude un resumen con **salida estructurada** validada por un esquema JSON (Pydantic).
+3. Los **videos de YouTube** van a una cola aparte que procesa un servicio en el computador
+   local, porque YouTube bloquea las transcripciones pedidas desde servidores en la nube.
+4. `build_graph.py` calcula los embeddings, crea los enlaces y publica `graph.json`.
+5. La página sigue cada paso con la API de Actions, muestra el porcentaje y se recarga sola.
+
+## Stack tecnológico
+
+| Capa | Tecnologías |
+|---|---|
+| **Frontend** | HTML, CSS y JavaScript (módulos ES, sin framework) · [3d-force-graph](https://github.com/vasturiano/3d-force-graph) · Three.js · Web Crypto API |
+| **Procesamiento** | Python 3.12 · `sentence-transformers` (`paraphrase-multilingual-MiniLM-L12-v2`) · `trafilatura` · `youtube-transcript-api` · Pydantic · `cryptography` |
+| **IA generativa** | Claude (Opus) mediante el SDK de Anthropic o Claude Code en modo no interactivo, con salida estructurada |
+| **Datos** | Markdown con *frontmatter* YAML, un archivo por nodo (versionado con Git) |
+| **Infraestructura** | GitHub Pages · GitHub Actions · GitHub Secrets · servicio de usuario `systemd` |
+
+## Decisiones técnicas
+
+- **Embeddings en vez de palabras clave.** Dos ideas se conectan si *significan* algo parecido,
+  aunque no compartan palabras. El modelo es multilingüe y corre en CPU, sin GPU.
+- **Sin backend propio.** El repositorio cumple el rol de base de datos (Markdown versionado) y de
+  cola de trabajos (`pendientes/`). Se publica gratis en GitHub Pages y no hay servidor que mantener.
+- **Salida estructurada.** Claude responde siguiendo un esquema JSON (incluido un `enum` de temas),
+  así el formato nunca se rompe y no hace falta "adivinar" la respuesta.
+- **Umbral de similitud calibrado.** Con textos cortos en español la mediana de similitud ronda
+  0,3, así que el umbral es 0,45 en vez del típico 0,6. Además, cada nodo aislado se conecta con su
+  vecino más cercano (≥ 0,3). El script muestra mínimo, mediana y máximo para recalibrar.
+- **Procesamiento híbrido nube/local.** Como YouTube bloquea a los servidores en la nube, los videos
+  se procesan con un servicio local que trabaja sobre una copia aparte del repositorio. Si el
+  computador está apagado, esperan en cola.
+- **Cifrado de extremo a extremo para PDFs.** El repositorio es público, pero los PDFs se suben
+  cifrados: solo la Action, que tiene la clave privada en GitHub Secrets, puede leerlos.
+- **Física de galaxias a medida.** El modo galaxias usa una fuerza de d3 escrita a mano que atrae
+  cada nodo al centro de su tema y debilita los enlaces entre temas distintos.
+
+## Instalación
+
+**Requisitos:** Python 3.12+, Git y un navegador moderno.
 
 ```bash
-# entorno Python
+git clone https://github.com/arrobaaas/segundo-cerebro.git
+cd segundo-cerebro
+
 python3 -m venv .venv
 source .venv/bin/activate
-pip install torch --index-url https://download.pytorch.org/whl/cpu   # sin GPU: versión liviana
+pip install torch --index-url https://download.pytorch.org/whl/cpu   # PyTorch liviano, sin GPU
 pip install -r requirements.txt
 
-# visor 3D (fase 1)
-cd web
-python3 -m http.server 8000
-# abrir http://localhost:8000
+git config core.hooksPath .githooks   # activa el hook que bloquea commits con claves
 ```
 
-> ¿Por qué un servidor y no doble clic en `index.html`? Por seguridad, el navegador
-> bloquea `fetch()` de archivos locales (`file://`), así que no podría leer `graph.json`.
-
-### Probar en el celular
-
-Con el servidor corriendo y el celular en el **mismo wifi** que el computador:
+Para levantar el visor en local:
 
 ```bash
-hostname -I   # muestra la IP local, por ejemplo 192.168.1.23
+cd web && python3 -m http.server 8000   # abrir http://localhost:8000
 ```
 
-Abre `http://<esa-IP>:8000` en el navegador del celular.
+> El navegador bloquea `fetch()` sobre `file://`, por eso se necesita un servidor y no basta
+> con abrir `index.html` con doble clic. Para probar en el celular, usa la IP local del
+> computador (`hostname -I`) estando en la misma red wifi.
 
-## Agregar ideas y reconstruir el grafo (fase 2)
+## Uso
 
-Con el entorno activado (`source .venv/bin/activate`):
+### Desde la web
 
-```bash
-# Crear una idea (genera ideas/idea-XXX.md y reconstruye graph.json)
-python scripts/agregar_idea.py "Título de la idea" -c "Contenido de la idea"
+| Acción | Cómo |
+|---|---|
+| Explorar | Arrastra para rotar, rueda o pellizco para zoom y clic en una estrella para ver su detalle y conexiones. |
+| Agrupar por tema | Botón **🌌 Separar en galaxias** / **✦ Juntar ideas**. |
+| Buscar | Botón **☰ Lista**: ideas agrupadas por tema, con buscador. |
+| Agregar una fuente | Botón **＋ Fuente** (solo en tus dispositivos): pega un link o sube un PDF. |
+| Desarrollar una idea | En el panel de una idea: **Copiar y abrir Claude** arma un prompt con tu perfil, la idea y sus conexiones. |
 
-# Sin -c te pide el contenido (varias líneas, termina con Ctrl+D)
-python scripts/agregar_idea.py "Título de la idea"
+Para conectar un dispositivo nuevo, abre la página con `#editar` al final de la URL y pega un
+[token *fine-grained*](https://github.com/settings/personal-access-tokens/new) con acceso solo a
+este repositorio (**Contents: Read and write**) y con fecha de expiración.
 
-# Reconstruir el grafo a mano (por ejemplo, después de editar un .md)
-python scripts/build_graph.py
-python scripts/build_graph.py --umbral 0.4   # más conexiones
-```
-
-También puedes crear o editar los `.md` a mano: `build_graph.py` lee todo lo
-que haya en `ideas/`, `fuentes/` y `fusionadas/`.
-
-### Cómo se conectan los nodos
-
-1. Cada nodo (título + contenido) se convierte en un **embedding**: un vector de
-   384 números que representa su significado.
-2. Se compara cada par de nodos con **similitud coseno** (1 = mismo significado, 0 = nada que ver).
-3. Si la similitud supera el **umbral** (por defecto 0.45), se crea un enlace.
-4. Un nodo que queda sin enlaces se conecta con su **vecino más parecido**,
-   si la similitud es al menos 0.3, para que no quede flotando solo.
-5. Las ideas fusionadas siempre se enlazan con sus `padres`.
-
-> **¿Por qué 0.45 y no 0.6?** Con este modelo y textos cortos en español, la
-> mediana de similitud entre pares ronda 0.3 y casi ningún par pasa 0.6, aunque
-> hablen del mismo tema. Al construir, el script muestra mín/mediana/máx para
-> que puedas ajustar el umbral a medida que crece tu grafo.
-
-## Aprender de links y desarrollar ideas con Claude (fase 3)
-
-Todo el cerebro está orientado a **proyectos viables para mi carrera de Informática**.
-Claude recibe siempre el contexto de [`perfil.md`](perfil.md): edítalo con tu año,
-tecnologías y tiempo disponible para que las respuestas sean para ti.
-
-### Desde la página web (botón **＋ Fuente**)
-
-Funciona también desde el celular, sin terminal:
-
-1. **Conectar GitHub (una vez por dispositivo):** crea un
-   [token fine-grained](https://github.com/settings/personal-access-tokens/new) con acceso
-   *solo* a este repositorio y permiso **Contents: Read and write**, y pégalo en la página.
-   Se guarda únicamente en ese navegador (`localStorage`), nunca en el código.
-2. Pega un link (**artículo, página web o video de YouTube**) o elige **PDF** y sube el
-   archivo → **Agregar al cerebro ✦**. Todo es automático: no hay que copiar prompts.
-   - La página deja `pendientes/<id>.json` en el repo (los PDF van **cifrados** en
-     `pendientes/<id>.bin`: el repo es público, pero solo la Action puede leerlos).
-   - La GitHub Action [`construir-grafo`](.github/workflows/construir-grafo.yml) saca la
-     transcripción del video, el texto de la página o lee el PDF, lo resume con la API de
-     Claude, crea `fuentes/fuente-XXX.md` y recalcula el grafo.
-   - La página muestra una **barra con el porcentaje de avance** (sigue cada paso de la
-     Action) y se recarga sola con las estrellas nuevas en 2-4 minutos. Si algo falla,
-     muestra el error.
-
-#### Videos de YouTube: se procesan en tu computador
-
-YouTube bloquea las transcripciones cuando las pide un servidor en la nube (como GitHub
-Actions). Por eso la página deja los videos en `pendientes/videos/` y los procesa
-[`scripts/servicio_local.py`](scripts/servicio_local.py) en tu computador: cada 30 s revisa la
-cola en una copia aparte del repo (`~/.local/share/segundo-cerebro/clon`), saca la
-transcripción con tu conexión, la resume con tu sesión de Claude Code y sube la fuente.
+### Desde la terminal
 
 ```bash
-bash scripts/instalar_servicio.sh           # instalar (arranca solo al iniciar sesión)
-journalctl --user -u segundo-cerebro -f     # ver qué está haciendo
-bash scripts/instalar_servicio.sh quitar    # desinstalar
-```
+# Ideas propias
+python scripts/agregar_idea.py "Título" -c "Contenido"
 
-Si el computador está apagado, el video espera en la cola hasta que lo enciendas.
-
-#### Configuración del modo automático (una vez)
-
-1. **Conectar Claude con tu suscripción (Pro/Max, sin costo extra):** en la terminal corre
-   `claude setup-token`, inicia sesión y copia el token que muestra. Guárdalo como secreto:
-   `gh secret set CLAUDE_CODE_OAUTH_TOKEN` (pégalo cuando lo pida). La Action usa Claude
-   Code en modo no interactivo (`claude -p`, solo con permiso de *leer* archivos) y lo que
-   proceses cuenta dentro de los límites de uso de tu plan.
-2. *(Alternativa de pago)* Si prefieres la API, guarda una key de
-   [console.anthropic.com](https://console.anthropic.com/) como secreto `ANTHROPIC_API_KEY`.
-   Si existe, se usa en vez de la suscripción.
-3. Para los PDF: guarda la clave privada de descifrado como secreto `PDF_PRIVATE_KEY`
-   (su pareja pública está en `web/agregar.js`). Para generar un par nuevo:
-   `openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 -out privada.pem`, guarda
-   `privada.pem` con `gh secret set PDF_PRIVATE_KEY < privada.pem`, pega en
-   `CLAVE_PUBLICA_PDF` el resultado de
-   `openssl pkey -in privada.pem -pubout -outform DER | base64 -w0` y borra `privada.pem`.
-4. *(Opcional)* Si YouTube bloquea a los servidores de GitHub ("YouTube está bloqueando
-   las solicitudes"), agrega el secreto `YOUTUBE_PROXY` con la dirección de un proxy
-   (`http://usuario:clave@host:puerto`).
-
-> **Seguridad del token:** si alguien lo obtuviera, solo podría modificar este repositorio.
-> Ponle fecha de expiración y, si lo pierdes, revócalo en GitHub → Settings → Developer settings.
-
-### GitHub Action: el grafo se reconstruye solo
-
-Cada push que cambia `ideas/`, `fuentes/`, `fusionadas/`, `planes/`, `perfil.md` o `scripts/`
-ejecuta `build_graph.py` en los servidores de GitHub y sube el `graph.json` nuevo.
-Por eso, **antes de trabajar desde la terminal, haz `git pull`** para traer el último
-`graph.json` y evitar conflictos.
-
-### Modo gratis con claude.ai desde la terminal (`--manual`)
-
-No necesitas API key: el script prepara el prompt, lo llevas a tu cuenta de
-[claude.ai](https://claude.ai/new) y le devuelves la respuesta.
-
-```bash
-python scripts/agregar_fuente.py "https://www.youtube.com/watch?v=..." --manual
-python scripts/desarrollar.py idea-002 --manual           # plan → planes/idea-002.md
-python scripts/desarrollar.py idea-002 --manual -p "¿Python o JavaScript?"
-```
-
-1. El script extrae el video o artículo y arma el prompt (tu perfil + la fuente + el formato).
-2. **Con `xclip` instalado** (`sudo apt install xclip`) el prompt queda copiado: pégalo en
-   claude.ai. **Sin xclip**, arrastra el archivo `.cache/prompt_fuente.txt` al chat.
-3. Copia la respuesta de Claude (botón *Copy*) y vuelve a la terminal:
-   con xclip basta presionar Enter; sin xclip pégala y termina con Enter + Ctrl+D.
-4. El script valida el JSON (si está incompleto te deja reintentar) y crea el nodo.
-
-### Modo automático con la API (de pago)
-
-#### Configurar la API key (una sola vez)
-
-```bash
-cp .env.example .env
-nano .env          # pega tu key de https://console.anthropic.com/
-```
-
-`.env` está en `.gitignore`: **nunca** se sube al repositorio.
-
-#### Agregar una fuente (video o artículo)
-
-```bash
+# Fuentes (con API key o suscripción; --manual usa claude.ai sin costo)
 python scripts/agregar_fuente.py "https://www.youtube.com/watch?v=..."
-python scripts/agregar_fuente.py "https://un-blog.com/articulo"
+python scripts/agregar_fuente.py "https://un-blog.com/articulo" --manual
+
+# Plan de desarrollo por fases para una idea → planes/<id>.md
+python scripts/desarrollar.py idea-002
+python scripts/desarrollar.py idea-002 -p "¿Qué base de datos me conviene?"
+
+# Reconstruir el grafo (umbral de similitud ajustable)
+python scripts/build_graph.py --umbral 0.4
 ```
 
-1. **YouTube** → transcripción con `youtube-transcript-api` (prefiere español, luego inglés,
-   luego cualquier idioma). **Web** → texto principal con `trafilatura`.
-2. Claude devuelve (en JSON validado): título, resumen, aprendizajes, **ideas de proyecto
-   viables** con su MVP, y tecnologías.
-3. Se guarda en `fuentes/fuente-XXX.md` y se reconstruye el grafo.
+> La Action reconstruye `graph.json` en cada *push*, así que conviene hacer `git pull` antes
+> de trabajar desde la terminal.
 
-Si la URL ya existe no se vuelve a procesar (usa `--forzar`). Cada fuente cuesta
-aprox. US$0,03–0,10 según el largo (el script muestra el costo exacto).
+## Configuración del modo automático
 
-### Desarrollar una idea con Claude
-
-**Desde la web (gratis, sin API key):** al abrir un nodo, la sección *Desarrollar con Claude*
-arma un prompt con tu perfil, la idea y sus conexiones:
-- **Copiar y abrir Claude ↗** copia el prompt y abre un chat nuevo: lo pegas, lo revisas y lo envías.
-- **Copiar prompt** para pegarlo donde quieras (Claude, Claude Code…).
-- **Preguntar ↗** hace lo mismo con tu pregunta sobre esa idea.
-
-> No usamos links `claude.ai/new?q=...` con el prompt adentro: claude.ai muestra una
-> advertencia con esos links, porque una página maliciosa podría usarlos para meterle a
-> Claude un prompt escondido (*prompt injection*). Pegándolo tú, ves lo que envías.
-
-> La web no usa la API a propósito: en una página pública la API key quedaría visible.
-
-**Desde la terminal** (con API, o gratis agregando `--manual`):
+Se hace una sola vez. Los secretos se guardan en GitHub y **nunca** llegan al navegador.
 
 ```bash
-python scripts/desarrollar.py idea-002                     # plan completo → planes/idea-002.md
-python scripts/desarrollar.py idea-002 -p "¿Qué base de datos uso?"   # pregunta rápida
+claude setup-token                    # token de tu suscripción de Claude (no le saques captura)
+bash scripts/configurar_secretos.sh   # guarda el token y genera la clave de PDFs
+git commit -am "web: nueva clave pública para PDFs" && git push
+bash scripts/instalar_servicio.sh     # servicio local que procesa los videos de YouTube
 ```
 
-El plan incluye viabilidad, MVP, stack, etapas con **un prompt listo por etapa**, cómo
-mostrarlo en el portafolio y siguientes pasos. Aparece en el panel de la web con un
-botón *Copiar* en cada prompt.
+| Secreto | Para qué |
+|---|---|
+| `CLAUDE_CODE_OAUTH_TOKEN` | Usar la suscripción de Claude (Pro/Max) sin pagar API. |
+| `ANTHROPIC_API_KEY` | *(Opcional)* API de pago; si existe, se usa en vez de la suscripción. |
+| `PDF_PRIVATE_KEY` | Descifrar los PDF. Su pareja pública está en `web/agregar.js`. |
+| `YOUTUBE_PROXY` | *(Opcional)* Proxy para procesar videos en la nube en vez de en el computador local. |
 
-## Ver el grafo: tipos, temas y galaxias
+Comandos útiles del servicio local:
 
-- **Colores por tipo:** Idea (morado), Video (rojo), Página web (naranjo), PDF (amarillo) y
-  Fusionada (verde). Las fuentes se separan según de dónde vinieron.
-- **☰ Lista:** panel a la izquierda (se oculta) con todas las ideas agrupadas por tema y un
-  buscador (ignora mayúsculas y tildes). Al tocar una, el grafo vuela a esa estrella.
-- **🌌 Separar en galaxias / ✦ Juntar ideas:** separa las estrellas en una galaxia por tema,
-  cada una con su nebulosa de color y su nombre; los enlaces entre galaxias se atenúan.
-  La página recuerda en ese navegador si dejaste la lista abierta y las galaxias activas.
-- Los temas se definen en `CATEGORIAS` (`scripts/cerebro.py`). Claude elige el tema al
-  analizar una fuente nueva; las ideas sin tema se clasifican solas al construir el grafo.
+```bash
+journalctl --user -u segundo-cerebro -f      # ver qué está haciendo
+bash scripts/instalar_servicio.sh quitar     # desinstalar
+```
 
-## Formato de un nodo (`.md`)
+El contexto que recibe Claude (carrera, tecnologías y objetivos) está en [`perfil.md`](perfil.md).
+
+## Estructura del proyecto
+
+```
+segundo-cerebro/
+├── ideas/ · fuentes/ · fusionadas/   # nodos del grafo (Markdown + frontmatter)
+├── pendientes/                       # cola de trabajos que deja la página
+├── scripts/
+│   ├── cerebro.py                    # modelo de datos, temas y lectura/escritura de nodos
+│   ├── build_graph.py                # embeddings, enlaces, clasificación y graph.json
+│   ├── agregar_fuente.py             # extracción (YouTube, web, PDF) y resumen con Claude
+│   ├── procesar_pendientes.py        # procesa la cola (Action y servicio local)
+│   ├── servicio_local.py             # procesa los videos en el computador local
+│   ├── claude_cliente.py             # cliente de Claude: API o suscripción (Claude Code)
+│   ├── desarrollar.py                # planes de desarrollo por fases
+│   └── …                             # agregar_idea, manual, configurar_secretos, etc.
+├── web/
+│   ├── index.html · style.css
+│   ├── app.js                        # visor 3D, galaxias, lista lateral y panel
+│   ├── agregar.js                    # ingesta, cifrado de PDFs y barra de progreso
+│   ├── graph.json                    # generado por build_graph.py
+│   └── vendor/                       # librerías JS fijadas y verificadas por SHA-256
+├── .github/workflows/construir-grafo.yml
+├── docs/                             # capturas para este README
+└── perfil.md                         # contexto profesional para Claude
+```
+
+## Formato de los datos
+
+<details>
+<summary><b>Nodo (<code>.md</code>)</b></summary>
 
 ```markdown
 ---
-id: idea-007
-titulo: Mi idea
-tipo: idea            # idea | fuente | fusionada (debe calzar con la carpeta)
-fecha: '2026-11-09'
-fuente_url: null      # URL si es una fuente
-padres: []            # ids de origen si es una fusionada
-categoria: web        # opcional: web | ia | datos | ciberseguridad | juegos | movil |
-                      #   nube | automatizacion | carrera | otros. Si falta, se asigna
-                      #   sola comparando el significado (embeddings) con cada tema.
+id: fuente-005
+titulo: Mejora iterativa de un clon de Minecraft con IA generativa
+tipo: fuente          # idea | fuente | fusionada (debe coincidir con la carpeta)
+fecha: '2026-11-11'
+fuente_url: https://www.youtube.com/watch?v=...
+padres: []            # ids de origen, solo en las fusionadas
+categoria: ia         # web | ia | datos | ciberseguridad | juegos | movil | nube |
+                      # automatizacion | carrera | otros (si falta, se asigna sola)
 origen: video         # solo fuentes: video | web | pdf (si falta, se deduce del link)
 ---
 
-El contenido de la idea en texto libre.
+Resumen, aprendizajes clave, ideas de proyecto con su MVP y tecnologías.
 ```
+</details>
 
-## Formato de `graph.json`
-
-Es el "contrato" entre los scripts de Python (que lo generan) y la web (que lo dibuja):
+<details>
+<summary><b><code>graph.json</code></b>: el contrato entre Python y la web</summary>
 
 ```json
 {
-  "meta": { "generado": "2026-11-09T23:40:00", "modelo": "...", "umbral": 0.45 },
+  "meta": {
+    "modelo": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "umbral": 0.45,
+    "perfil": "…",
+    "categorias": { "web": "Desarrollo web", "ia": "Inteligencia artificial", "…": "…" }
+  },
   "nodes": [
-    { "id": "idea-001", "titulo": "...", "tipo": "idea | fuente | fusionada",
-      "contenido": "...", "fecha": "2026-11-09", "fuente_url": null, "padres": [] }
+    { "id": "idea-001", "titulo": "…", "tipo": "idea", "contenido": "…", "fecha": "2026-11-09",
+      "fuente_url": null, "padres": [], "categoria": "web", "origen": null }
   ],
   "links": [
-    { "source": "idea-001", "target": "fuente-001", "similitud": 0.82, "tipo": "similitud | padre" }
+    { "source": "idea-001", "target": "fuente-001", "similitud": 0.62, "tipo": "similitud" }
   ]
 }
 ```
 
 Los enlaces `padre` unen una idea fusionada con los nodos que la originaron.
-
-## Estructura
-
-```
-segundo-cerebro/
-├── ideas/        # nodos de ideas (Markdown + frontmatter)
-├── fuentes/      # links y videos (Markdown + frontmatter)
-├── fusionadas/   # ideas generadas por IA (Markdown + frontmatter)
-├── planes/       # planes de desarrollo generados por desarrollar.py
-├── .githooks/    # pre-commit: bloquea commits con claves
-├── scripts/      # cerebro.py, claude_cliente.py, manual.py, descargar_librerias.py, agregar_idea.py, agregar_fuente.py, desarrollar.py, build_graph.py
-├── web/          # index.html, app.js, agregar.js, style.css, graph.json, vendor/ (librerías)
-├── perfil.md     # tu contexto para Claude (carrera, nivel, metas)
-├── requirements.txt
-├── .env.example
-└── .gitignore
-```
+</details>
 
 ## Seguridad
 
-**Las visitas solo pueden mirar.** La página no tiene ninguna API key, el botón **＋ Fuente**
-solo aparece en tus dispositivos, y para guardar en el repo hace falta un token que solo
-tú puedes crear. Si una visita usa "Copiar y abrir Claude", se abre *su propia* cuenta de claude.ai.
+Las visitas **solo pueden mirar**: la página no contiene claves, el botón **＋ Fuente** aparece
+solo en los dispositivos conectados y escribir en el repositorio exige un token personal.
 
-| Qué | Cómo se protege |
+| Riesgo | Mitigación |
 |---|---|
-| Claves de Claude (token de suscripción o API key) | En `.env` (local, en `.gitignore`) o como **secretos** de GitHub para la Action. Nunca en la web ni en el repo; solo existen en el paso que las usa. Claude Code corre solo con la herramienta Read (no ejecuta comandos) |
-| Subir una clave por error | Hook `pre-commit` local (bloquea claves y `.env`) + *secret scanning* con *push protection* de GitHub |
-| Token de GitHub | Solo *fine-grained* (un repo, permiso *Contents*); se rechazan los clásicos `ghp_`. Vive solo en el `localStorage` de tu navegador |
-| Código de terceros | Librerías JS dentro del repo (`web/vendor/`, con sus huellas SHA-256 en `versiones.json`), sin CDN |
-| Inyección de código (XSS) | Todo el texto se inserta con `textContent`; la CSP prohíbe scripts externos e *inline* |
-| GitHub Action | Solo corre con pushes a `main` (solo tú puedes, con tu token); Actions fijadas a un commit (SHA); permisos mínimos; máximo 10 links por ejecución para no gastar de más; los links se validan (`http(s)` solamente) |
+| Filtración de claves | Solo en GitHub Secrets o en `.env` (ignorado por Git), y expuestas únicamente al paso que las usa. Hook `pre-commit` y *push protection* de GitHub contra commits con claves. |
+| Acceso al repositorio | Solo se aceptan tokens *fine-grained* limitados a este repositorio; los clásicos (`ghp_`) se rechazan. |
+| PDFs en un repositorio público | Cifrado híbrido en el navegador (`RSA-OAEP-3072` + `AES-256-GCM`); un archivo alterado se rechaza. |
+| XSS e inyección | Todo el texto se inserta con `textContent`; la CSP prohíbe scripts externos e *inline*; solo se aceptan links `http(s)`. |
+| Clickjacking | La página se niega a mostrarse dentro de un `iframe`. |
+| Cadena de suministro | Librerías JS dentro del repositorio con hash SHA-256; Actions fijadas por SHA; versiones exactas de Python y Claude Code. |
+| *Prompt injection* desde fuentes | Claude solo tiene la herramienta de lectura, no puede ejecutar comandos ni navegar; tope de 10 trabajos por ejecución. |
+| Datos personales | El repositorio es público: no hay datos privados en `perfil.md` ni en los nodos. |
 
-**Al clonar el repo en otro computador**, activa el hook:
+## Hoja de ruta
 
-```bash
-git config core.hooksPath .githooks
-```
+- [x] Visor 3D con panel de detalle y colores por tipo
+- [x] Enlaces por similitud semántica (embeddings) y reconstrucción automática con GitHub Actions
+- [x] Ingesta de videos, artículos y PDFs, con barra de progreso
+- [x] Resúmenes y planes de desarrollo por fases con Claude
+- [x] Clasificación por tema, modo galaxias y lista lateral con buscador
+- [ ] **Ideas fusionadas automáticas**: combinar con IA nodos similares en una idea nueva (`fusionar.py`)
+- [ ] Control deslizante del umbral de similitud en la web
+- [ ] Exportar un plan de desarrollo como *issues* de GitHub
 
-**Para conectar un dispositivo nuevo** (celular, otro navegador), abre la página con
-`#editar` al final: `https://arrobaaas.github.io/segundo-cerebro/web/#editar`.
-Crea el token con **fecha de expiración** (ej. 90 días). Si pierdes un dispositivo, revoca el
-token en GitHub → *Settings* → *Developer settings* → *Personal access tokens*.
+---
 
-> ⚠ **El repositorio es público**: cualquiera puede leer tus ideas, fuentes y `perfil.md`.
-> No guardes ahí nada privado.
+<div align="center">
+<sub>Proyecto personal de portafolio, Ingeniería Civil en Computación e Informática · <a href="https://github.com/arrobaaas">github.com/arrobaaas</a></sub>
+</div>
