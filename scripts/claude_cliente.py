@@ -4,12 +4,25 @@ Conexión con la API de Claude (Anthropic), compartida por los scripts.
 - Lee la API key desde .env (que está en .gitignore: nunca se sube).
 - Centraliza el modelo y el manejo de errores, para no repetirlo en cada script.
 - Muestra cuántos tokens se usaron y cuánto costó aproximadamente.
+
+Dos formas de conectarse (se elige sola):
+- API key (ANTHROPIC_API_KEY): se paga por uso en console.anthropic.com.
+- Tu suscripción de Claude (Pro/Max), SIN costo extra: si no hay API key pero sí
+  CLAUDE_CODE_OAUTH_TOKEN (se crea con `claude setup-token`), las respuestas
+  estructuradas se piden a Claude Code en modo no interactivo (`claude -p`).
+  Así funciona la GitHub Action que procesa lo que agregas desde la página.
 """
 
 from __future__ import annotations
 
+import base64
 import json
+import os
+import shutil
+import subprocess
 import sys
+import tempfile
+from pathlib import Path
 
 import anthropic
 from dotenv import load_dotenv
@@ -110,6 +123,8 @@ def pedir_estructurado(system: str, mensaje: str | list, modelo_salida: type[Bas
     exactamente los campos del esquema. Así no hay que "adivinar" el formato.
     `mensaje` puede ser texto o una lista de bloques (ej. un PDF + instrucciones).
     """
+    if usar_suscripcion():
+        return _estructurado_claude_code(system, mensaje, modelo_salida, esfuerzo)
     esquema = modelo_salida.model_json_schema()
     respuesta = _llamar(
         max_tokens=max_tokens,
@@ -122,6 +137,80 @@ def pedir_estructurado(system: str, mensaje: str | list, modelo_salida: type[Bas
     )
     try:
         return modelo_salida.model_validate_json(_texto(respuesta))
+    except ValueError as e:
+        raise ErrorClaude(f"Claude devolvió un JSON inesperado: {e}") from None
+
+
+def usar_suscripcion() -> bool:
+    """True si hay que usar la suscripción (Claude Code) en vez de la API."""
+    return not os.environ.get("ANTHROPIC_API_KEY") and bool(os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"))
+
+
+def _estructurado_claude_code(system: str, mensaje: str | list, modelo_salida: type[BaseModel],
+                              esfuerzo: str) -> BaseModel:
+    """Igual que pedir_estructurado, pero con Claude Code y tu suscripción.
+
+    Claude Code también garantiza el esquema (--json-schema). Los PDF se dejan en
+    una carpeta temporal y Claude los lee con su herramienta Read (la única que
+    tiene habilitada: no puede ejecutar comandos ni navegar).
+    """
+    if not shutil.which("claude"):
+        raise ErrorClaude("No está instalado Claude Code (npm install -g @anthropic-ai/claude-code).")
+    esquema = _esquema_estricto(modelo_salida.model_json_schema())
+
+    with tempfile.TemporaryDirectory() as carpeta:
+        if isinstance(mensaje, list):
+            partes = []
+            for i, bloque in enumerate(mensaje):
+                if bloque.get("type") == "document":
+                    nombre = f"documento-{i}.pdf"
+                    Path(carpeta, nombre).write_bytes(base64.b64decode(bloque["source"]["data"]))
+                    partes.append(f"Lee COMPLETO el archivo PDF «{nombre}» (en la carpeta actual) "
+                                  "con la herramienta Read, página por página si es largo.")
+                elif bloque.get("type") == "text":
+                    partes.append(bloque["text"])
+            texto = "\n\n".join(partes)
+        else:
+            texto = mensaje
+
+        comando = [
+            "claude", "-p", "--output-format", "json",
+            "--json-schema", json.dumps(esquema),
+            "--model", MODELO, "--effort", esfuerzo,
+            "--system-prompt", system,
+            "--tools", "Read",           # solo leer archivos de esta carpeta temporal
+            "--no-session-persistence",
+        ]
+        try:
+            proceso = subprocess.run(comando, input=texto, capture_output=True, text=True,
+                                     cwd=carpeta, timeout=15 * 60)
+        except subprocess.TimeoutExpired:
+            raise ErrorClaude("Claude tardó más de 15 minutos en responder.") from None
+
+    try:
+        salida = json.loads(proceso.stdout)
+    except ValueError:
+        detalle = (proceso.stderr or proceso.stdout).strip().splitlines()[-1:] or ["sin detalle"]
+        if any(p in detalle[0].lower() for p in ("auth", "login", "token", "401")):
+            raise ErrorClaude("El token de Claude no es válido o expiró. Crea uno nuevo con "
+                              "`claude setup-token` y actualiza el secreto CLAUDE_CODE_OAUTH_TOKEN.") from None
+        raise ErrorClaude(f"Claude Code falló: {detalle[0][:300]}") from None
+
+    if salida.get("is_error") or salida.get("subtype") != "success":
+        mensaje_error = str(salida.get("result") or salida.get("subtype") or "error desconocido")
+        if any(p in mensaje_error.lower() for p in ("auth", "login", "token", "401")):
+            raise ErrorClaude("El token de Claude no es válido o expiró. Crea uno nuevo con "
+                              "`claude setup-token` y actualiza el secreto CLAUDE_CODE_OAUTH_TOKEN.")
+        if "limit" in mensaje_error.lower():
+            raise ErrorClaude("Llegaste al límite de uso de tu plan de Claude. Espera a que se "
+                              "renueve e inténtalo de nuevo.")
+        raise ErrorClaude(f"Claude Code no pudo responder: {mensaje_error[:300]}")
+
+    datos = salida.get("structured_output")
+    if datos is None:
+        raise ErrorClaude("Claude Code no devolvió la respuesta en el formato pedido.")
+    try:
+        return modelo_salida.model_validate(datos)
     except ValueError as e:
         raise ErrorClaude(f"Claude devolvió un JSON inesperado: {e}") from None
 

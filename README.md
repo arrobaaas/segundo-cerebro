@@ -116,11 +116,14 @@ Funciona también desde el celular, sin terminal:
 
 #### Configuración del modo automático (una vez)
 
-1. Crea una API key en [console.anthropic.com](https://console.anthropic.com/) (es de pago
-   por uso, aparte de la suscripción de claude.ai; cada fuente cuesta centavos de dólar).
-2. Guárdala como secreto del repositorio, desde la terminal:
-   `gh secret set ANTHROPIC_API_KEY` (pega la key cuando la pida), o en GitHub →
-   Settings → Secrets and variables → Actions → *New repository secret*.
+1. **Conectar Claude con tu suscripción (Pro/Max, sin costo extra):** en la terminal corre
+   `claude setup-token`, inicia sesión y copia el token que muestra. Guárdalo como secreto:
+   `gh secret set CLAUDE_CODE_OAUTH_TOKEN` (pégalo cuando lo pida). La Action usa Claude
+   Code en modo no interactivo (`claude -p`, solo con permiso de *leer* archivos) y lo que
+   proceses cuenta dentro de los límites de uso de tu plan.
+2. *(Alternativa de pago)* Si prefieres la API, guarda una key de
+   [console.anthropic.com](https://console.anthropic.com/) como secreto `ANTHROPIC_API_KEY`.
+   Si existe, se usa en vez de la suscripción.
 3. Para los PDF: guarda la clave privada de descifrado como secreto `PDF_PRIVATE_KEY`
    (su pareja pública está en `web/agregar.js`). Para generar un par nuevo:
    `openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 -out privada.pem`, guarda
@@ -270,7 +273,7 @@ tú puedes crear. Si una visita usa "Copiar y abrir Claude", se abre *su propia*
 
 | Qué | Cómo se protege |
 |---|---|
-| API key de Anthropic | En `.env` (local, en `.gitignore`) o como **secreto** de GitHub para la Action. Nunca en la web ni en el repo; solo existe en el paso que la usa |
+| Claves de Claude (token de suscripción o API key) | En `.env` (local, en `.gitignore`) o como **secretos** de GitHub para la Action. Nunca en la web ni en el repo; solo existen en el paso que las usa. Claude Code corre solo con la herramienta Read (no ejecuta comandos) |
 | Subir una clave por error | Hook `pre-commit` local (bloquea claves y `.env`) + *secret scanning* con *push protection* de GitHub |
 | Token de GitHub | Solo *fine-grained* (un repo, permiso *Contents*); se rechazan los clásicos `ghp_`. Vive solo en el `localStorage` de tu navegador |
 | Código de terceros | Librerías JS dentro del repo (`web/vendor/`, con sus huellas SHA-256 en `versiones.json`), sin CDN |

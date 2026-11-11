@@ -17,7 +17,8 @@ PDF: la página sube pendientes/<id>.bin con el PDF CIFRADO en el navegador
 PDF_PRIVATE_KEY de GitHub) nadie puede leerlo. Formato del .bin:
     [384 bytes: clave AES cifrada con RSA-3072] [12 bytes: IV] [PDF cifrado + etiqueta GCM]
 
-La API key viene del secreto ANTHROPIC_API_KEY de GitHub: nunca está en la página.
+Claude se conecta con el secreto CLAUDE_CODE_OAUTH_TOKEN (tu suscripción) o ANTHROPIC_API_KEY
+(API de pago), guardados en GitHub: nunca están en la página.
 
 Uso local (opcional, con tu .env):
     python scripts/procesar_pendientes.py
@@ -113,15 +114,16 @@ def main() -> int:
         print("No hay links pendientes.")
         return 0
 
-    sin_key = not os.environ.get("ANTHROPIC_API_KEY") and not (RAIZ / ".env").exists()
+    sin_key = (not os.environ.get("ANTHROPIC_API_KEY") and not os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")
+               and not (RAIZ / ".env").exists())
     for archivo in archivos[:MAX_POR_EJECUCION]:
         datos = leer_pendiente(archivo)
         url = str(datos.get("url") or "")
         print(f"\n=== {archivo.name}: {datos.get('tipo', 'link')} {url}")
         antes = {n.id for n in leer_nodos()}
         if sin_key:
-            error = ("Falta la API key: agrega el secreto ANTHROPIC_API_KEY en GitHub "
-                     "(Settings → Secrets and variables → Actions).")
+            error = ("Falta conectar Claude: agrega en GitHub el secreto CLAUDE_CODE_OAUTH_TOKEN "
+                     "(tu suscripción, con `claude setup-token`) o ANTHROPIC_API_KEY (API de pago).")
         else:
             error = procesar(datos, archivo)
         if error:

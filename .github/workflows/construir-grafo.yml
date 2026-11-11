@@ -62,11 +62,17 @@ jobs:
           pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install -r requirements.txt
 
+      # Claude Code (versión fija) para usar tu suscripción de Claude sin pagar API
+      - name: Instalar Claude Code
+        if: hashFiles('pendientes/*.json') != ''
+        run: npm install -g @anthropic-ai/claude-code@2.1.311
+
       # Solo si la página dejó links o PDFs pendientes. Las claves existen únicamente
       # en este paso (no en los demás) y GitHub las oculta si aparecen en los registros.
       - name: Procesar links agregados desde la página
         if: hashFiles('pendientes/*.json') != ''
         env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           YOUTUBE_PROXY: ${{ secrets.YOUTUBE_PROXY }}
           PDF_PRIVATE_KEY: ${{ secrets.PDF_PRIVATE_KEY }}
