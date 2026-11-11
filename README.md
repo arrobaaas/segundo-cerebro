@@ -141,6 +141,9 @@ pip install -r requirements.txt
 git config core.hooksPath .githooks   # activa el hook que bloquea commits con claves
 ```
 
+> `requirements.txt` lista las dependencias directas; `requirements.lock` (generado con
+> `bash scripts/actualizar_dependencias.sh`) las fija todas con su huella para la Action.
+
 Para levantar el visor en local:
 
 ```bash
@@ -299,7 +302,8 @@ solo en los dispositivos conectados y escribir en el repositorio exige un token 
 | PDFs en un repositorio público | Cifrado híbrido en el navegador (`RSA-OAEP-3072` + `AES-256-GCM`); un archivo alterado se rechaza. |
 | XSS e inyección | Todo el texto se inserta con `textContent`; la CSP prohíbe scripts externos e *inline*; solo se aceptan links `http(s)`. |
 | Clickjacking | La página se niega a mostrarse dentro de un `iframe`. |
-| Cadena de suministro | Librerías JS dentro del repositorio con hash SHA-256; Actions fijadas por SHA; versiones exactas de Python y Claude Code. |
+| Cadena de suministro | Librerías JS dentro del repositorio con hash SHA-256; Actions fijadas por SHA; **las 74 dependencias de Python** (incluidas las indirectas) fijadas con huella SHA-256 en `requirements.lock` e instaladas con `--require-hashes`; versión exacta de Claude Code. |
+| Borrado o reescritura del historial | Regla de GitHub sobre `main`: prohibido el *force push* y borrar la rama. |
 | *Prompt injection* desde fuentes | Claude no puede ejecutar comandos, navegar ni leer archivos fuera de su carpeta temporal; un `.env` colado en el repositorio se ignora. |
 | Código malicioso subido con un token robado | La Action ejecuta con tus claves **solo el código de un commit fijado** (`CODIGO_CONFIABLE` en el workflow), que el token de la página no puede cambiar porque no tiene permiso `workflow`. Del repositorio solo lee datos. Para confiar en código nuevo: `bash scripts/confiar_codigo.sh`. |
 | Código remoto en tu computador | El servicio local ejecuta el código de tu carpeta y del clon solo lee datos (`SEGUNDO_CEREBRO_DATOS`). |
