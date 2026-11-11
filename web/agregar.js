@@ -223,6 +223,16 @@ async function jobDe(run) {
   return (await r.json()).jobs?.[0] ?? null;
 }
 
+// ¿Es un video de YouTube? (youtube.com/watch, youtu.be, shorts, live, embed)
+function esYoutube(url) {
+  try {
+    const host = new URL(url).hostname.replace(/^(www|m|music)\./, '');
+    return host === 'youtube.com' || host === 'youtu.be';
+  } catch {
+    return false;
+  }
+}
+
 // ¿Ya está publicado el grafo con estas estrellas? (GitHub Pages tarda ~1 min)
 async function grafoPublicado(ids) {
   try {
@@ -355,9 +365,12 @@ export function iniciarAgregar({ obtenerNodos, alAbrir, avisar }) {
     actualizarModoEdicion();
   });
 
-  // Sube lo necesario y devuelve { nombre, sha, textoAnalisis }
+  // Sube lo necesario y devuelve { nombre, sha, textoAnalisis, esVideo }
   async function enviar(esPdf, url) {
     const nombre = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    // Videos: YouTube bloquea a los servidores de GitHub, así que van a la cola
+    // que procesa tu computador (scripts/servicio_local.py)
+    const esVideo = !esPdf && esYoutube(url);
     const datos = { url: url || null, fecha: new Date().toISOString() };
     let textoAnalisis = /youtu\.?be/i.test(url)
       ? 'Claude está viendo la transcripción del video'
@@ -375,10 +388,44 @@ export function iniciarAgregar({ obtenerNodos, alAbrir, avisar }) {
       textoAnalisis = 'Claude está leyendo el PDF';
     }
     progreso(3, 'Enviando…');
-    const sha = await subirArchivo(`pendientes/${nombre}.json`,
+    const sha = await subirArchivo(`pendientes/${esVideo ? 'videos/' : ''}${nombre}.json`,
       textoABase64(JSON.stringify(datos, null, 2) + '\n'),
       esPdf ? `pendiente: PDF ${datos.nombre}` : `pendiente: ${url}`);
-    return { nombre, sha, textoAnalisis };
+    return { nombre, sha, textoAnalisis, esVideo };
+  }
+
+  // Revisa si el pendiente ya terminó: { ids }, { error } o null si sigue en proceso
+  async function resultadoDe(nombre) {
+    const listo = await leerJsonRepo(`pendientes/listos/${nombre}.json`);
+    if (listo) {
+      borrarArchivoRepo(`pendientes/listos/${nombre}.json`, listo.sha);
+      return { ids: Array.isArray(listo.datos.ids) ? listo.datos.ids : [] };
+    }
+    const fallido = await leerJsonRepo(`pendientes/fallidos/${nombre}.json`);
+    if (fallido) {
+      borrarArchivoRepo(`pendientes/fallidos/${nombre}.json`, fallido.sha);
+      return { error: String(fallido.datos.error || 'No se pudo procesar.') };
+    }
+    return null;
+  }
+
+  // Videos: los procesa tu computador. No hay pasos que seguir en GitHub, así que
+  // el avance se estima con el tiempo (normalmente ~1 min) hasta que llegue el resultado.
+  async function seguirVideo({ nombre }) {
+    const inicio = Date.now();
+    while (Date.now() - inicio < 30 * 60 * 1000) {
+      await esperar(5000);
+      const fin = await resultadoDe(nombre);
+      if (fin) return fin;
+      const seg = (Date.now() - inicio) / 1000;
+      const texto = seg < 35
+        ? 'Esperando a tu computador…'
+        : seg < 180
+          ? 'Tu computador está viendo la transcripción y Claude la analiza…'
+          : 'Sigue en cola: ¿está encendido tu computador? (se procesará apenas lo esté)';
+      progreso(6 + 60 * (1 - Math.exp(-seg / 50)), texto); // se acerca a 66% sin pasarse
+    }
+    return { enCola: true };
   }
 
   // Sigue la Action hasta que el pendiente quede listo o falle.
@@ -409,16 +456,8 @@ export function iniciarAgregar({ obtenerNodos, alAbrir, avisar }) {
       }
 
       // La Action terminó: ¿qué pasó con nuestro pendiente?
-      const listo = await leerJsonRepo(`pendientes/listos/${nombre}.json`);
-      if (listo) {
-        borrarArchivoRepo(`pendientes/listos/${nombre}.json`, listo.sha);
-        return { ids: Array.isArray(listo.datos.ids) ? listo.datos.ids : [] };
-      }
-      const fallido = await leerJsonRepo(`pendientes/fallidos/${nombre}.json`);
-      if (fallido) {
-        borrarArchivoRepo(`pendientes/fallidos/${nombre}.json`, fallido.sha);
-        return { error: String(fallido.datos.error || 'No se pudo procesar.') };
-      }
+      const fin = await resultadoDe(nombre);
+      if (fin) return fin;
       // Ni listo ni fallido: si se canceló (llegó otro envío), lo procesa la siguiente
       if (run.conclusion === 'cancelled' || await leerJsonRepo(`pendientes/${nombre}.json`)) {
         const siguiente = await ultimaEjecucion();
@@ -466,17 +505,27 @@ export function iniciarAgregar({ obtenerNodos, alAbrir, avisar }) {
       const envio = await enviar(esPdf, url);
       $('input-url').value = '';
       $('input-pdf').value = '';
-      const fin = await seguir(envio);
+      const fin = envio.esVideo ? await seguirVideo(envio) : await seguir(envio);
+      if (fin.enCola) {
+        progreso(porcentajeActual, 'En cola en tu computador');
+        mostrarResultado('El video quedó en cola: se procesará solo cuando tu computador esté ' +
+          'encendido (con el servicio de videos funcionando). Puedes cerrar esta página.');
+        return;
+      }
       if (fin.error) {
         progreso(porcentajeActual, 'No se pudo agregar', true);
         mostrarResultado(`✘ ${fin.error}`, 'error');
         return;
       }
-      // Listo en el repo; falta que GitHub Pages publique el grafo nuevo
+      // Listo en el repo; falta que GitHub reconstruya y publique el grafo nuevo
+      // (para videos, la Action recién empieza: ~1-2 min más)
+      const desde = envio.esVideo ? 70 : 92;
+      const duracion = envio.esVideo ? 150 : 90;
       const inicio = Date.now();
-      while (Date.now() - inicio < 5 * 60 * 1000) {
+      while (Date.now() - inicio < 6 * 60 * 1000) {
         const seg = (Date.now() - inicio) / 1000;
-        progreso(92 + 7 * Math.min(1, seg / 90), 'Publicando las estrellas nuevas…');
+        progreso(desde + (99 - desde) * Math.min(1, seg / duracion),
+          envio.esVideo ? 'Conectando con tus otras ideas y publicando…' : 'Publicando las estrellas nuevas…');
         if (fin.ids.length === 0 || await grafoPublicado(fin.ids)) break;
         await esperar(5000);
       }

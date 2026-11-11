@@ -20,12 +20,18 @@ PDF_PRIVATE_KEY de GitHub) nadie puede leerlo. Formato del .bin:
 Claude se conecta con el secreto CLAUDE_CODE_OAUTH_TOKEN (tu suscripción) o ANTHROPIC_API_KEY
 (API de pago), guardados en GitHub: nunca están en la página.
 
+VIDEOS DE YOUTUBE: YouTube bloquea a los servidores de GitHub, así que la página
+los deja en pendientes/videos/ (la Action no los toca) y los procesa tu computador
+con scripts/servicio_local.py, que llama a este script con --videos.
+
 Uso local (opcional, con tu .env):
-    python scripts/procesar_pendientes.py
+    python scripts/procesar_pendientes.py            # links y PDFs
+    python scripts/procesar_pendientes.py --videos   # videos de YouTube
 """
 
 from __future__ import annotations
 
+import argparse
 import contextlib
 import io
 import json
@@ -38,6 +44,7 @@ from cerebro import RAIZ, leer_nodos
 import agregar_fuente
 
 PENDIENTES = RAIZ / "pendientes"
+VIDEOS = PENDIENTES / "videos"
 FALLIDOS = PENDIENTES / "fallidos"
 LISTOS = PENDIENTES / "listos"
 
@@ -108,18 +115,31 @@ def procesar(datos: dict, archivo) -> str | None:
     return (" ".join(lineas) or "No se pudo procesar el link.")[:500]
 
 
-def main() -> int:
-    archivos = sorted(PENDIENTES.glob("*.json"))
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Procesa lo que dejó la página en pendientes/.")
+    parser.add_argument("--videos", action="store_true",
+                        help="procesar los videos de YouTube (pendientes/videos/), en tu computador")
+    args = parser.parse_args(argv)
+
+    carpeta = VIDEOS if args.videos else PENDIENTES
+    archivos = sorted(carpeta.glob("*.json"))
     if not archivos:
-        print("No hay links pendientes.")
+        print("No hay pendientes.")
         return 0
 
     sin_key = (not os.environ.get("ANTHROPIC_API_KEY") and not os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")
-               and not (RAIZ / ".env").exists())
+               and os.environ.get("USAR_CLAUDE_CODE") != "1" and not (RAIZ / ".env").exists())
     for archivo in archivos[:MAX_POR_EJECUCION]:
         datos = leer_pendiente(archivo)
         url = str(datos.get("url") or "")
         print(f"\n=== {archivo.name}: {datos.get('tipo', 'link')} {url}")
+        # En GitHub, YouTube bloquea las transcripciones: el video pasa a la cola de
+        # tu computador (por si llegó aquí desde una versión antigua de la página)
+        if not args.videos and os.environ.get("GITHUB_ACTIONS") and agregar_fuente.id_youtube(url):
+            VIDEOS.mkdir(parents=True, exist_ok=True)
+            archivo.rename(VIDEOS / archivo.name)
+            print("▶ Video de YouTube: queda en pendientes/videos/ para tu computador.")
+            continue
         antes = {n.id for n in leer_nodos()}
         if sin_key:
             error = ("Falta conectar Claude: agrega en GitHub el secreto CLAUDE_CODE_OAUTH_TOKEN "

@@ -143,7 +143,10 @@ def pedir_estructurado(system: str, mensaje: str | list, modelo_salida: type[Bas
 
 def usar_suscripcion() -> bool:
     """True si hay que usar la suscripción (Claude Code) en vez de la API."""
-    return not os.environ.get("ANTHROPIC_API_KEY") and bool(os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"))
+    # USAR_CLAUDE_CODE=1: usar la sesión ya iniciada de Claude Code en este computador
+    # (lo usa scripts/servicio_local.py, que procesa los videos en tu computador)
+    return not os.environ.get("ANTHROPIC_API_KEY") and bool(
+        os.environ.get("CLAUDE_CODE_OAUTH_TOKEN") or os.environ.get("USAR_CLAUDE_CODE") == "1")
 
 
 def _estructurado_claude_code(system: str, mensaje: str | list, modelo_salida: type[BaseModel],

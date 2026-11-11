@@ -114,6 +114,22 @@ Funciona también desde el celular, sin terminal:
      Action) y se recarga sola con las estrellas nuevas en 2-4 minutos. Si algo falla,
      muestra el error.
 
+#### Videos de YouTube: se procesan en tu computador
+
+YouTube bloquea las transcripciones cuando las pide un servidor en la nube (como GitHub
+Actions). Por eso la página deja los videos en `pendientes/videos/` y los procesa
+[`scripts/servicio_local.py`](scripts/servicio_local.py) en tu computador: cada 30 s revisa la
+cola en una copia aparte del repo (`~/.local/share/segundo-cerebro/clon`), saca la
+transcripción con tu conexión, la resume con tu sesión de Claude Code y sube la fuente.
+
+```bash
+bash scripts/instalar_servicio.sh           # instalar (arranca solo al iniciar sesión)
+journalctl --user -u segundo-cerebro -f     # ver qué está haciendo
+bash scripts/instalar_servicio.sh quitar    # desinstalar
+```
+
+Si el computador está apagado, el video espera en la cola hasta que lo enciendas.
+
 #### Configuración del modo automático (una vez)
 
 1. **Conectar Claude con tu suscripción (Pro/Max, sin costo extra):** en la terminal corre
