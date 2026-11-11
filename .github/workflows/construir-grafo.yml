@@ -20,6 +20,7 @@ on:
       - "perfil.md"
       - "scripts/**"
       - "requirements.txt"
+      - "requirements.lock"
   workflow_dispatch: {} # permite ejecutarla a mano desde la pestaña Actions
 
 # Si llegan dos pushes seguidos, la segunda ejecución espera a la primera
@@ -41,7 +42,7 @@ permissions:
 # Para confiar en código nuevo, después de revisarlo y subirlo:
 #     bash scripts/confiar_codigo.sh
 env:
-  CODIGO_CONFIABLE: 0f500a8909f5ef67b0686a58fc62e76cba4e465e
+  CODIGO_CONFIABLE: b05c2bc81654264c3f44c83480e1dc5e641673c5
 
 jobs:
   construir:
@@ -67,7 +68,7 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip # guarda los paquetes descargados entre ejecuciones
-          cache-dependency-path: confiable/requirements.txt
+          cache-dependency-path: confiable/requirements.lock
 
       # El modelo de embeddings pesa ~470 MB: lo guardamos en caché para no
       # descargarlo en cada ejecución.
@@ -76,12 +77,14 @@ jobs:
           path: ~/.cache/huggingface
           key: modelo-embeddings-v1
 
-      # requirements.txt del código confiable: un paquete malicioso agregado al repo
-      # podría ejecutarse al instalarse o al importarse en el paso con claves.
+      # requirements.lock del código confiable: TODAS las dependencias con versión exacta
+      # y huella SHA-256 (--require-hashes). Si alguien alterara un paquete, la
+      # instalación fallaría en vez de ejecutarse en el paso que usa tus claves.
       - name: Instalar dependencias
         run: |
-          pip install torch --index-url https://download.pytorch.org/whl/cpu
-          pip install -r confiable/requirements.txt
+          pip install --require-hashes --no-deps -r confiable/requirements.lock \
+            --index-url https://download.pytorch.org/whl/cpu \
+            --extra-index-url https://pypi.org/simple
 
       # Claude Code (versión fija) para usar tu suscripción de Claude sin pagar API
       - name: Instalar Claude Code
