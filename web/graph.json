@@ -162,6 +162,45 @@
       "origen": null
     },
     {
+      "id": "idea-013",
+      "titulo": "LegacyLens: migración asistida de archivos COBOL a SQL",
+      "tipo": "idea",
+      "contenido": "Es una herramienta que lee copybooks de COBOL y archivos de ancho fijo como los que usan bancos y entidades públicas, genera automáticamente el esquema SQL y el código Python para cargar los datos, y usa IA para documentar qué significa cada campo. Ataca un problema real de la industria: hay muchísimos datos atrapados en formatos antiguos que casi nadie sabe leer.\n\nMVP: Fase 1: un parser de copybooks (PIC X, PIC 9, COMP-3) que genere un esquema PostgreSQL y cargue un archivo de ejemplo. Fase 2: pruebas de equivalencia que comparen los totales y registros originales con los migrados. Fase 3: una interfaz web para subir archivos y ver la documentación generada por un LLM. Cada fase se integra con CI en GitHub Actions y se despliega en la nube.\n\nTecnologías: Python, PostgreSQL, FastAPI, pytest, API de un LLM, GitHub Actions\n\nNació de la fuente: Historia de los lenguajes de programación: de Assembly a Python",
+      "fecha": "2026-11-11",
+      "fuente_url": null,
+      "padres": [
+        "fuente-007"
+      ],
+      "categoria": "datos",
+      "origen": null
+    },
+    {
+      "id": "idea-014",
+      "titulo": "MemTutor: sandbox que explica errores de memoria en C",
+      "tipo": "idea",
+      "contenido": "Es una plataforma web donde los estudiantes suben programas en C, que se ejecutan en un contenedor aislado con AddressSanitizer y Valgrind. La IA traduce los reportes a una explicación clara en español, señala la línea culpable y muestra cómo se aprovecharía ese error en un ataque real (por ejemplo, un buffer overflow). A diferencia de un analizador estático, encuentra los errores ejecutando el código de verdad.\n\nMVP: Fase 1: una API que compile y ejecute C en Docker con límites de CPU, memoria y red, y devuelva el reporte de ASan. Fase 2: una explicación con LLM y un catálogo de cinco errores clásicos con ejemplos. Fase 3: un frontend con editor y un historial por usuario, más pruebas de seguridad del propio sandbox para evitar que alguien escape del contenedor.\n\nTecnologías: Docker, GCC con AddressSanitizer, Python (FastAPI), JavaScript con Monaco Editor, API de un LLM, Cloud Run\n\nNació de la fuente: Historia de los lenguajes de programación: de Assembly a Python",
+      "fecha": "2026-11-11",
+      "fuente_url": null,
+      "padres": [
+        "fuente-007"
+      ],
+      "categoria": "ciberseguridad",
+      "origen": null
+    },
+    {
+      "id": "idea-015",
+      "titulo": "StackRadar Chile: lo que piden las empresas frente a lo que enseña la universidad",
+      "tipo": "idea",
+      "contenido": "Es un pipeline que extrae ofertas laborales de TI publicadas en Chile, usa NLP para identificar qué lenguajes y herramientas piden y las cruza con las mallas curriculares de universidades chilenas. El resultado es un dashboard que muestra brechas y tendencias, por ejemplo cuánto se pide TypeScript, Go o COBOL. Le sirve a estudiantes y escuelas para decidir qué aprender o qué enseñar.\n\nMVP: Fase 1: un scraper de dos portales de empleo que guarde las ofertas en una base de datos. Fase 2: extracción de tecnologías con un diccionario más un LLM, con pruebas sobre un conjunto etiquetado a mano. Fase 3: un dashboard web público con series de tiempo y una comparación con dos mallas curriculares, actualizado a diario con un job programado.\n\nTecnologías: Python, Playwright, PostgreSQL, spaCy o API de un LLM, Streamlit, GitHub Actions (cron)\n\nNació de la fuente: Historia de los lenguajes de programación: de Assembly a Python",
+      "fecha": "2026-11-11",
+      "fuente_url": null,
+      "padres": [
+        "fuente-007"
+      ],
+      "categoria": "datos",
+      "origen": null
+    },
+    {
       "id": "fuente-001",
       "titulo": "(Ejemplo) Video: API REST con FastAPI desde cero",
       "tipo": "fuente",
@@ -231,7 +270,7 @@
       "id": "fuente-007",
       "titulo": "Historia de los lenguajes de programación: de Assembly a Python",
       "tipo": "fuente",
-      "contenido": "El video recorre la evolución de los lenguajes de programación y muestra cómo cada uno nació para resolver un problema concreto. Parte de Assembly y del código máquina, pasa por los primeros lenguajes de alto nivel con compilador (Fortran, Algol, COBOL, BASIC), sigue con C y Pascal, Ada y C++, y llega a Python, Java y su máquina virtual, Rust, Go, Kotlin, TypeScript, Node.js/ES6 y Swift. También cuenta los juicios de Java (Sun contra Microsoft y Oracle contra Google), que terminaron en el fallo de 2021 que reconoció como uso legítimo la reimplementación de APIs. Para tu carrera sirve para entender conceptos que aparecen en entrevistas técnicas y en el trabajo diario: compilación frente a interpretación, bytecode y portabilidad, tipado estático y dinámico, seguridad de memoria, y por qué en bancos y gobiernos sigue habiendo código antiguo (COBOL, Fortran) que alguien tiene que mantener o migrar. Además, sugiere proyectos de compiladores, análisis de código y modernización de sistemas antiguos, que combinan IA, datos, web y ciberseguridad.\n\nAprendizajes clave:\n• Un compilador traduce código de alto nivel a instrucciones de máquina. Fortran (John Backus, IBM, 1957) demostró que una línea de alto nivel podía reemplazar decenas de instrucciones de Assembly sin perder rendimiento, y por eso se usa en ciencia desde hace décadas.\n• C (Dennis Ritchie, 1972) nació para que Unix funcionara en distintas computadoras: al separar el código del hardware permitió portarlo de una máquina a otra. Java llevó esa idea más lejos con el bytecode y la JVM ('escríbelo una vez, ejecútalo en cualquier parte').\n• La seguridad de memoria es un problema central en ciberseguridad: C y C++ dan control total, pero eso facilita errores graves (desbordamientos de búfer, uso de memoria ya liberada). Rust se creó para evitarlos sin perder rendimiento, y Ada para sistemas críticos con tipado fuerte y chequeos en tiempo de ejecución.\n• El tipado estático escala mejor en proyectos grandes. TypeScript (2012) agregó tipos a JavaScript para que las bases de código grandes no se desmoronen, y ES6 (2015) trajo let/const, funciones flecha, clases y módulos. Con Node.js (2009), JavaScript pasó también al backend.\n• El código antiguo sigue en producción ('si funciona, no lo toques'). COBOL todavía corre en bancos y gobiernos, y migrarlo o mantenerlo es un nicho con demanda. Además, el caso Oracle contra Google (2021) dejó un precedente: reimplementar una API puede considerarse uso legítimo.\n\nIdeas de proyecto que inspira (cada una es una estrella propia):\n• LegacyLens: analizador y migrador asistido por IA de COBOL a Python: Plataforma web que recibe programas COBOL, los analiza (estructura, variables, flujo de control y dependencias de datos) y usa un LLM para explicarlos y proponer una traducción a Python con pruebas que verifican que el resultado sea el mismo. Ataca un problema real de bancos y gobiernos: código antiguo que pocos entienden.\n• MemGuard: escáner de vulnerabilidades de memoria en C con explicación por IA: Herramienta que analiza repositorios en C/C++, detecta patrones inseguros (strcpy, gets, desbordamientos de búfer, uso de memoria ya liberada) combinando análisis estático propio con herramientas existentes, y usa IA para explicar cada hallazgo y sugerir una corrección o su equivalente seguro en Rust. Combina ciberseguridad, IA y web.\n• MiniLang Playground: un compilador propio a bytecode con entorno web seguro: Un lenguaje educativo pequeño (al estilo de BASIC o Pascal) con lexer, parser, compilador a bytecode y una máquina virtual propia, ejecutable desde un playground web que muestra los tokens, el árbol sintáctico y el bytecode paso a paso. Enseña de primera mano los conceptos del video (compilación, bytecode, VM) y obliga a resolver la seguridad de ejecutar código ajeno.\n\nTecnologías: Assembly, Fortran, Algol, COBOL, BASIC, C, Pascal, Ada, C++, Python, Java / JVM / bytecode, Rust, Go, Kotlin, TypeScript, JavaScript ES6, Node.js, Swift, Compiladores, Unix, Programación orientada a objetos, Tipado estático, Seguridad de memoria",
+      "contenido": "El video recorre la evolución de los lenguajes de programación y muestra cómo cada uno nació para resolver un problema concreto. Parte de Assembly y del código máquina, pasa por los primeros lenguajes de alto nivel con compilador (Fortran, Algol, COBOL, BASIC), sigue con C y Pascal, Ada y C++, y llega a Python, Java y su máquina virtual, Rust, Go, Kotlin, TypeScript, Node.js/ES6 y Swift. También cuenta los juicios de Java (Sun contra Microsoft y Oracle contra Google), que terminaron en el fallo de 2021 que reconoció como uso legítimo la reimplementación de APIs. Para tu carrera sirve para entender conceptos que aparecen en entrevistas técnicas y en el trabajo diario: compilación frente a interpretación, bytecode y portabilidad, tipado estático y dinámico, seguridad de memoria, y por qué en bancos y gobiernos sigue habiendo código antiguo (COBOL, Fortran) que alguien tiene que mantener o migrar. Además, sugiere proyectos de compiladores, análisis de código y modernización de sistemas antiguos, que combinan IA, datos, web y ciberseguridad.\n\nAprendizajes clave:\n• Un compilador traduce código de alto nivel a instrucciones de máquina. Fortran (John Backus, IBM, 1957) demostró que una línea de alto nivel podía reemplazar decenas de instrucciones de Assembly sin perder rendimiento, y por eso se usa en ciencia desde hace décadas.\n• C (Dennis Ritchie, 1972) nació para que Unix funcionara en distintas computadoras: al separar el código del hardware permitió portarlo de una máquina a otra. Java llevó esa idea más lejos con el bytecode y la JVM ('escríbelo una vez, ejecútalo en cualquier parte').\n• La seguridad de memoria es un problema central en ciberseguridad: C y C++ dan control total, pero eso facilita errores graves (desbordamientos de búfer, uso de memoria ya liberada). Rust se creó para evitarlos sin perder rendimiento, y Ada para sistemas críticos con tipado fuerte y chequeos en tiempo de ejecución.\n• El tipado estático escala mejor en proyectos grandes. TypeScript (2012) agregó tipos a JavaScript para que las bases de código grandes no se desmoronen, y ES6 (2015) trajo let/const, funciones flecha, clases y módulos. Con Node.js (2009), JavaScript pasó también al backend.\n• El código antiguo sigue en producción ('si funciona, no lo toques'). COBOL todavía corre en bancos y gobiernos, y migrarlo o mantenerlo es un nicho con demanda. Además, el caso Oracle contra Google (2021) dejó un precedente: reimplementar una API puede considerarse uso legítimo.\n\nIdeas de proyecto que inspira (cada una es una estrella propia):\n• LegacyLens: migración asistida de archivos COBOL a SQL: Es una herramienta que lee copybooks de COBOL y archivos de ancho fijo como los que usan bancos y entidades públicas, genera automáticamente el esquema SQL y el código Python para cargar los datos, y usa IA para documentar qué significa cada campo. Ataca un problema real de la industria: hay muchísimos datos atrapados en formatos antiguos que casi nadie sabe leer.\n• MemTutor: sandbox que explica errores de memoria en C: Es una plataforma web donde los estudiantes suben programas en C, que se ejecutan en un contenedor aislado con AddressSanitizer y Valgrind. La IA traduce los reportes a una explicación clara en español, señala la línea culpable y muestra cómo se aprovecharía ese error en un ataque real (por ejemplo, un buffer overflow). A diferencia de un analizador estático, encuentra los errores ejecutando el código de verdad.\n• StackRadar Chile: lo que piden las empresas frente a lo que enseña la universidad: Es un pipeline que extrae ofertas laborales de TI publicadas en Chile, usa NLP para identificar qué lenguajes y herramientas piden y las cruza con las mallas curriculares de universidades chilenas. El resultado es un dashboard que muestra brechas y tendencias, por ejemplo cuánto se pide TypeScript, Go o COBOL. Le sirve a estudiantes y escuelas para decidir qué aprender o qué enseñar.\n\n\nTecnologías: Assembly, Fortran, Algol, COBOL, BASIC, C, Pascal, Ada, C++, Python, Java / JVM / bytecode, Rust, Go, Kotlin, TypeScript, JavaScript ES6, Node.js, Swift, Compiladores, Unix, Programación orientada a objetos, Tipado estático, Seguridad de memoria",
       "fecha": "2026-11-11",
       "fuente_url": "https://www.youtube.com/watch?v=IAZP3_FkfIk",
       "padres": [],
@@ -425,6 +464,12 @@
     },
     {
       "source": "idea-010",
+      "target": "idea-014",
+      "similitud": 0.496,
+      "tipo": "similitud"
+    },
+    {
+      "source": "idea-010",
       "target": "fuente-001",
       "similitud": 0.46,
       "tipo": "similitud"
@@ -439,6 +484,18 @@
       "source": "idea-010",
       "target": "fusionada-001",
       "similitud": 0.515,
+      "tipo": "similitud"
+    },
+    {
+      "source": "idea-014",
+      "target": "fusionada-001",
+      "similitud": 0.537,
+      "tipo": "similitud"
+    },
+    {
+      "source": "idea-015",
+      "target": "fusionada-001",
+      "similitud": 0.467,
       "tipo": "similitud"
     },
     {
@@ -535,6 +592,24 @@
       "source": "idea-012",
       "target": "fuente-006",
       "similitud": 0.322,
+      "tipo": "padre"
+    },
+    {
+      "source": "idea-013",
+      "target": "fuente-007",
+      "similitud": 0.29,
+      "tipo": "padre"
+    },
+    {
+      "source": "idea-014",
+      "target": "fuente-007",
+      "similitud": 0.346,
+      "tipo": "padre"
+    },
+    {
+      "source": "idea-015",
+      "target": "fuente-007",
+      "similitud": 0.254,
       "tipo": "padre"
     },
     {

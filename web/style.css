@@ -127,6 +127,16 @@ body.lista-abierta #encabezado { left: calc(var(--ancho-lateral) + 16px); }
   overscroll-behavior: contain;
 }
 .seccion { margin-bottom: 6px; }
+.grupo-lista {
+  margin: 14px 6px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--texto);
+  opacity: 0.6;
+}
+.grupo-lista:first-child { margin-top: 2px; }
 .seccion > summary {
   display: flex;
   align-items: center;

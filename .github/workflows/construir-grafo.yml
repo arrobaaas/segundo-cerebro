@@ -65,6 +65,7 @@ jobs:
           persist-credentials: false
 
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        id: python
         with:
           python-version: "3.12"
           cache: pip # guarda los paquetes descargados entre ejecuciones
@@ -77,14 +78,27 @@ jobs:
           path: ~/.cache/huggingface
           key: modelo-embeddings-v1
 
+      # Entorno de Python ya instalado, en caché: ahorra ~40 s por ejecución. La clave
+      # incluye la huella de requirements.lock: si cambia una dependencia, se reinstala.
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        id: entorno
+        with:
+          path: ~/venv
+          key: venv-${{ steps.python.outputs.python-version }}-${{ hashFiles('confiable/requirements.lock') }}
+
       # requirements.lock del código confiable: TODAS las dependencias con versión exacta
       # y huella SHA-256 (--require-hashes). Si alguien alterara un paquete, la
       # instalación fallaría en vez de ejecutarse en el paso que usa tus claves.
       - name: Instalar dependencias
+        if: steps.entorno.outputs.cache-hit != 'true'
         run: |
-          pip install --require-hashes --no-deps -r confiable/requirements.lock \
+          python -m venv ~/venv
+          ~/venv/bin/pip install --require-hashes --no-deps -r confiable/requirements.lock \
             --index-url https://download.pytorch.org/whl/cpu \
             --extra-index-url https://pypi.org/simple
+
+      - name: Usar el entorno
+        run: echo "$HOME/venv/bin" >> "$GITHUB_PATH"
 
       # Claude Code (versión fija) para usar tu suscripción de Claude sin pagar API
       - name: Instalar Claude Code
@@ -110,9 +124,9 @@ jobs:
         working-directory: confiable
         run: python scripts/build_graph.py
 
-      - name: Guardar cambios (fuentes nuevas, pendientes y graph.json)
+      - name: Guardar cambios (fuentes e ideas nuevas, pendientes y graph.json)
         run: |
-          git add -A web/graph.json fuentes
+          git add -A web/graph.json fuentes ideas
           # pendientes/ puede no existir (aún no se agregó nada desde la página)
           git add -A pendientes 2>/dev/null || true
           if git diff --cached --quiet; then

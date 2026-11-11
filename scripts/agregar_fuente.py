@@ -168,10 +168,25 @@ Instrucciones:
 - El resumen va primero y debe capturar la esencia: se usa para conectar esta fuente con
   otras ideas del estudiante, así que menciona los temas técnicos principales.
 - Las ideas de proyecto deben ser VIABLES para un estudiante: alcanzables con su nivel
-  (estudiante de 4.º año), útiles para su portafolio, y conectadas con lo que enseña la fuente. Evita ideas
-  genéricas ("una app de tareas") salvo que tengan un giro concreto.
+  (estudiante de 4.º año), útiles para su portafolio, y conectadas con lo que enseña la fuente.
+- Las ideas deben ser ORIGINALES: un problema concreto con un enfoque propio, no un clon de un
+  producto conocido ni una idea genérica ("una app de tareas", "un chatbot", "un clon de X").
+  Cada idea debe tener algo que la distinga: un usuario específico, un dato poco usado, una
+  combinación de áreas inesperada o un giro técnico interesante.
+- Las 2 o 3 ideas deben ser distintas entre sí (otro problema, otro enfoque o otra área), y
+  NUEVAS respecto de las ideas que el estudiante ya tiene (se listan junto a la fuente): no
+  repitas ni reformules ninguna de esas.
 - Si la fuente no trata de informática, busca la conexión más razonable con su carrera
   (ej. un tema de finanzas → una herramienta de software para ese tema)."""
+
+
+def ideas_existentes() -> str:
+    """Títulos de las ideas que ya están en el grafo, para que Claude no las repita."""
+    titulos = sorted(n.titulo for n in leer_nodos() if n.tipo in ("idea", "fusionada"))
+    if not titulos:
+        return ""
+    lista = "\n".join(f"- {t}" for t in titulos[-80:])  # tope: no alargar demasiado el mensaje
+    return f"\n\n<ideas_que_ya_tengo>\n{lista}\n</ideas_que_ya_tengo>"
 
 
 def mensaje_fuente(texto: str, url: str, titulo_original: str | None, es_video: bool) -> str:
@@ -180,6 +195,7 @@ def mensaje_fuente(texto: str, url: str, titulo_original: str | None, es_video: 
         f"{tipo}\nURL: {url}\n"
         + (f"Título original: {titulo_original}\n" if titulo_original else "")
         + f"\n<fuente>\n{texto}\n</fuente>"
+        + ideas_existentes()
     )
 
 
@@ -301,7 +317,8 @@ def agregar_pdf(pdf: bytes, nombre: str, url: str | None = None) -> int:
                                         "data": base64.standard_b64encode(pdf).decode()}},
         {"type": "text", "text": f"Documento PDF\nNombre del archivo: {nombre}\n"
                                  + (f"URL: {url}\n" if url else "")
-                                 + "Resume este documento según las instrucciones."},
+                                 + "Resume este documento según las instrucciones."
+                                 + ideas_existentes()},
     ]
     try:
         r = pedir_estructurado(SYSTEM_RESUMEN.format(perfil=leer_perfil()), mensaje, ResumenFuente)

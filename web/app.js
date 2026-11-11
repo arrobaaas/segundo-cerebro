@@ -941,62 +941,91 @@ function abrirLista(abrir) {
 // Para buscar sin importar mayúsculas ni tildes ("logica" encuentra "Lógica")
 const normalizar = (texto) => String(texto ?? '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 
+// Crea una sección plegable de la lista (un tema o un tipo de fuente)
+function crearSeccion({ clave, titulo, color, nodos, filtro }) {
+  const seccion = document.createElement('details');
+  seccion.className = 'seccion';
+  seccion.open = Boolean(filtro) || !temasCerrados.has(clave); // al buscar, todo abierto
+  seccion.addEventListener('toggle', () => {
+    if (filtro) return;
+    if (seccion.open) temasCerrados.delete(clave); else temasCerrados.add(clave);
+    guardarVista({ temasCerrados: [...temasCerrados] });
+  });
+
+  const resumen = document.createElement('summary');
+  const punto = document.createElement('span');
+  punto.className = 'punto-tema';
+  punto.style.background = color;
+  const cuenta = document.createElement('span');
+  cuenta.className = 'cuenta';
+  cuenta.textContent = String(nodos.length);
+  resumen.append(punto, titulo, cuenta);
+
+  const ul = document.createElement('ul');
+  ul.className = 'lista-nodos';
+  for (const nodo of nodos) {
+    const boton = document.createElement('button');
+    boton.type = 'button';
+    boton.dataset.id = nodo.id;
+    const nombre = document.createElement('span');
+    nombre.className = 'nombre';
+    nombre.textContent = nodo.titulo;
+    const etiqueta = document.createElement('span');
+    etiqueta.className = 'origen';
+    // En "Mis fuentes" el tipo ya es el título de la sección: mostramos la fecha
+    etiqueta.textContent = clave.startsWith('origen:') ? (nodo.fecha ?? '') : (NOMBRES_CLASE[claseDe(nodo)] ?? '');
+    boton.append(iconoEstrella(colorDe(nodo)), nombre, etiqueta);
+    boton.addEventListener('click', () => {
+      seleccionarNodo(nodo);
+      if (esMovil()) abrirLista(false); // en celular la lista tapa todo: la cerramos
+    });
+    const li = document.createElement('li');
+    li.appendChild(boton);
+    ul.appendChild(li);
+  }
+  seccion.append(resumen, ul);
+  return seccion;
+}
+
+function tituloGrupo(texto) {
+  const h = document.createElement('h3');
+  h.className = 'grupo-lista';
+  h.textContent = texto;
+  return h;
+}
+
 function construirLista() {
   const filtro = normalizar(el('buscar').value.trim());
   const contenedor = el('lista-secciones');
   contenedor.replaceChildren();
+  const coincide = (n) => !filtro || normalizar(`${n.titulo} ${n.contenido}`).includes(filtro);
+  const todos = [...nodosPorId.values()].filter(coincide);
   let total = 0;
 
+  // 1) Mis fuentes: lo que agregaste, separado en videos, páginas web y PDFs
+  //    (las más recientes primero)
+  const fuentes = [];
+  for (const origen of ['video', 'web', 'pdf']) {
+    const nodos = todos
+      .filter((n) => n.tipo === 'fuente' && claseDe(n) === origen)
+      .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)) || b.id.localeCompare(a.id));
+    if (!nodos.length) continue;
+    const titulo = { video: 'Videos', web: 'Páginas web', pdf: 'PDFs' }[origen];
+    fuentes.push(crearSeccion({ clave: `origen:${origen}`, titulo, color: COLORES[origen], nodos, filtro }));
+  }
+  if (fuentes.length) contenedor.append(tituloGrupo('Mis fuentes'), ...fuentes);
+
+  // 2) Todas las ideas agrupadas por tema
+  const temas = [];
   for (const tema of temasPresentes()) {
-    const nodos = [...nodosPorId.values()]
+    const nodos = todos
       .filter((n) => categoriaDe(n) === tema)
-      .filter((n) => !filtro || normalizar(`${n.titulo} ${n.contenido}`).includes(filtro))
       .sort((a, b) => a.titulo.localeCompare(b.titulo, 'es'));
     if (!nodos.length) continue;
     total += nodos.length;
-
-    const seccion = document.createElement('details');
-    seccion.className = 'seccion';
-    seccion.open = Boolean(filtro) || !temasCerrados.has(tema); // al buscar, todo abierto
-    seccion.addEventListener('toggle', () => {
-      if (filtro) return;
-      if (seccion.open) temasCerrados.delete(tema); else temasCerrados.add(tema);
-      guardarVista({ temasCerrados: [...temasCerrados] });
-    });
-
-    const resumen = document.createElement('summary');
-    const punto = document.createElement('span');
-    punto.className = 'punto-tema';
-    punto.style.background = colorTema(tema);
-    const cuenta = document.createElement('span');
-    cuenta.className = 'cuenta';
-    cuenta.textContent = String(nodos.length);
-    resumen.append(punto, nombreTema(tema), cuenta);
-
-    const ul = document.createElement('ul');
-    ul.className = 'lista-nodos';
-    for (const nodo of nodos) {
-      const boton = document.createElement('button');
-      boton.type = 'button';
-      boton.dataset.id = nodo.id;
-      const nombre = document.createElement('span');
-      nombre.className = 'nombre';
-      nombre.textContent = nodo.titulo;
-      const origen = document.createElement('span');
-      origen.className = 'origen';
-      origen.textContent = NOMBRES_CLASE[claseDe(nodo)] ?? '';
-      boton.append(iconoEstrella(colorDe(nodo)), nombre, origen);
-      boton.addEventListener('click', () => {
-        seleccionarNodo(nodo);
-        if (esMovil()) abrirLista(false); // en celular la lista tapa todo: la cerramos
-      });
-      const li = document.createElement('li');
-      li.appendChild(boton);
-      ul.appendChild(li);
-    }
-    seccion.append(resumen, ul);
-    contenedor.appendChild(seccion);
+    temas.push(crearSeccion({ clave: tema, titulo: nombreTema(tema), color: colorTema(tema), nodos, filtro }));
   }
+  if (temas.length) contenedor.append(tituloGrupo('Por tema'), ...temas);
 
   if (!total) {
     const vacio = document.createElement('p');
