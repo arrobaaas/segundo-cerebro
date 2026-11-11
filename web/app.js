@@ -497,14 +497,23 @@ function contextoNodo(nodo) {
 function promptDesarrollo(nodo) {
   return (
     contextoNodo(nodo) +
-    '\nSoy estudiante de Ingeniería en Informática y quiero convertir esta idea en un ' +
-    'proyecto real y viable para mi portafolio. Ayúdame con:\n' +
-    '1. Viabilidad: dificultad, tiempo estimado y qué voy a aprender.\n' +
-    '2. El MVP: la versión mínima que vale la pena terminar.\n' +
-    '3. Stack recomendado (preferir opciones gratuitas), justificando cada elección.\n' +
-    '4. Un plan de 4 a 6 etapas. Para cada etapa, escribe un prompt listo para copiar ' +
-    'que pueda usar contigo (o con Claude Code) para desarrollarla.\n' +
-    'Explícame las decisiones técnicas: estoy aprendiendo.'
+    '\nSoy estudiante de 4.º año de Ingeniería Civil en Computación e Informática y quiero ' +
+    'convertir esta idea en UN proyecto grande, enfocado y viable para aprender, armar mi ' +
+    'portafolio y prepararme para mi práctica profesional y mi primer trabajo. Ayúdame con:\n' +
+    '1. Visión: qué problema real resuelve, para quién, qué áreas de mi perfil combina ' +
+    'y por qué le interesaría a un reclutador.\n' +
+    '2. Viabilidad: dificultad, riesgos principales y qué voy a aprender.\n' +
+    '3. Alcance: qué incluye la versión 1.0 y qué queda fuera.\n' +
+    '4. Arquitectura y stack (preferir opciones gratuitas), justificando cada elección.\n' +
+    '5. Un plan de 6 a 8 fases secuenciales, desde el repositorio hasta el despliegue en la ' +
+    'nube, que cubra backend y base de datos, frontend, IA o datos, seguridad (OWASP), ' +
+    'pruebas y CI/CD. Para cada fase: objetivo, tareas ordenadas, tecnologías, conceptos ' +
+    'que aprenderé, entregable, criterio de terminado y un prompt autocontenido listo para ' +
+    'copiar que pueda usar contigo (o con Claude Code) para desarrollarla.\n' +
+    '6. Prácticas profesionales (Git, pruebas, GitHub Actions, README) y cómo presentarlo ' +
+    'en mi CV y en una entrevista.\n' +
+    'Sé concreto (nombra herramientas específicas) y explícame las decisiones técnicas: ' +
+    'estoy aprendiendo.'
   );
 }
 

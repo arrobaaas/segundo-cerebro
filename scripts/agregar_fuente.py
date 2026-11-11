@@ -145,8 +145,8 @@ Instrucciones:
 - Escribe todo en español, claro y directo, aunque la fuente esté en otro idioma.
 - El resumen va primero y debe capturar la esencia: se usa para conectar esta fuente con
   otras ideas del estudiante, así que menciona los temas técnicos principales.
-- Las ideas de proyecto deben ser VIABLES para un estudiante: alcanzables con su nivel y
-  tiempo, útiles para su portafolio, y conectadas con lo que enseña la fuente. Evita ideas
+- Las ideas de proyecto deben ser VIABLES para un estudiante: alcanzables con su nivel
+  (estudiante de 4.º año), útiles para su portafolio, y conectadas con lo que enseña la fuente. Evita ideas
   genéricas ("una app de tareas") salvo que tengan un giro concreto.
 - Si la fuente no trata de informática, busca la conexión más razonable con su carrera
   (ej. un tema de finanzas → una herramienta de software para ese tema)."""

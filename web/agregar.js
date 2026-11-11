@@ -157,8 +157,8 @@ ${perfil || 'Estudiante de Ingeniería en Informática.'}
 Instrucciones:
 - Escribe todo en español, claro y directo, aunque la fuente esté en otro idioma.
 - El resumen va primero y debe capturar los temas técnicos principales.
-- Las ideas de proyecto deben ser VIABLES para un estudiante: alcanzables con su nivel y
-  tiempo, útiles para su portafolio y conectadas con la fuente. Evita ideas genéricas.
+- Las ideas de proyecto deben ser VIABLES para un estudiante: alcanzables con su nivel
+  (estudiante de 4.º año), útiles para su portafolio y conectadas con la fuente. Evita ideas genéricas.
 - Si la fuente no trata de informática, busca la conexión más razonable con su carrera.
 
 ${fuente}

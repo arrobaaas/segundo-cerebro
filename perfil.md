@@ -9,11 +9,13 @@
   ⚠ El repositorio es público: no pongas datos privados aquí.
 -->
 
-- Carrera: Ingeniería en Informática (estudiante).
-- Año / semestre: (complétalo)
-- Tecnologías que ya manejo: Python, HTML, CSS, JavaScript, Git. (ajústalo)
-- Tecnologías que quiero aprender: (complétalo, ej. bases de datos, APIs, nube, IA)
-- Tiempo para proyectos personales: (ej. 5-8 horas a la semana)
-- Área que me interesa: (ej. desarrollo web, datos, IA, ciberseguridad, videojuegos)
+- Carrera: Ingeniería Civil en Computación e Informática, 4.º año.
+- Tecnologías que manejo: Python, Java, JavaScript, HTML, CSS, Git, bases de datos
+  (SQL), APIs, nube e Inteligencia Artificial.
+- Áreas que me interesan: desarrollo web, datos, IA y ciberseguridad.
 - Objetivo: construir proyectos viables que me sirvan para aprender, armar mi
   portafolio y prepararme para mi práctica profesional y mi primer trabajo.
+- Qué tipo de proyecto busco: uno grande y enfocado (no varios chicos), que combine
+  al menos dos de mis áreas de interés, use prácticas de la industria (Git, pruebas,
+  CI/CD, seguridad, despliegue en la nube) y se desarrolle en fases claras, cada una
+  con un entregable que funcione.

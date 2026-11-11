@@ -30,39 +30,71 @@ from cerebro import GRAPH_JSON, PLANES, RAIZ, ErrorNodo, Nodo, leer_nodos, leer_
 from claude_cliente import ErrorClaude, pedir_texto, salir_con_error
 from manual import entregar_prompt, recibir_respuesta
 
-SYSTEM = """Eres un mentor técnico para un estudiante de Ingeniería en Informática que quiere
-convertir sus ideas en proyectos reales y viables para su carrera y su portafolio.
+SYSTEM = """Eres un mentor técnico senior para un estudiante de 4.º año de Ingeniería Civil en
+Computación e Informática que quiere convertir sus ideas en UN proyecto grande, enfocado y
+viable, que le sirva para aprender, para su portafolio y para prepararse para su práctica
+profesional y su primer trabajo.
 
 Perfil del estudiante:
 {perfil}
 
-Responde en español. Sé concreto y honesto: si algo es demasiado grande para su nivel o su
-tiempo, dilo y propone una versión más chica. Prefiere tecnologías gratuitas o con plan gratis.
-Escribe en texto plano con Markdown simple (títulos con #, listas con -, bloques de código
-con ```), sin tablas."""
+Reglas:
+- Responde en español, claro y directo.
+- Sé concreto: nombra librerías, frameworks, servicios y herramientas específicas, no
+  recomendaciones genéricas. Prefiere tecnologías gratuitas o con plan gratis.
+- Sé honesto: si una parte es demasiado ambiciosa, dilo y propone cómo acotarla sin perder
+  el foco del proyecto.
+- Usa prácticas reales de la industria: Git con ramas y pull requests, pruebas automatizadas,
+  CI/CD, seguridad desde el diseño (OWASP) y despliegue en la nube.
+- Escribe en Markdown simple (títulos con #, listas con -, bloques de código con ```),
+  sin tablas."""
 
-PEDIDO_PLAN = """Crea un plan de desarrollo para esta idea, con estas secciones:
+PEDIDO_PLAN = """Crea un plan de desarrollo completo para convertir esta idea en un proyecto grande y
+enfocado. Usa exactamente estas secciones:
+
+# Visión del proyecto
+Nombre, descripción en 2-3 líneas, qué problema real resuelve y para quién. Qué áreas de mi
+perfil combina (web, datos, IA, ciberseguridad) y por qué le resultaría atractivo a un
+reclutador.
 
 # Viabilidad
-Dificultad (baja/media/alta), tiempo estimado con su disponibilidad, y qué aprenderá.
+Dificultad (media/alta), riesgos principales y cómo mitigarlos, y qué voy a aprender.
 
-# MVP
-La versión mínima que vale la pena terminar y mostrar. Qué entra y qué queda fuera.
+# Alcance
+- Versión 1.0: las funcionalidades que deben existir al terminar todas las fases.
+- Fuera de alcance: lo que queda explícitamente para después.
 
-# Stack recomendado
-Lenguajes, frameworks, base de datos y dónde publicarlo, justificando cada elección.
+# Arquitectura y stack
+Componentes del sistema y cómo se comunican (describe un diagrama en texto), modelo de datos
+principal, y el stack (lenguajes, frameworks, base de datos, IA, nube), justificando cada
+elección.
 
-# Plan por etapas
-Entre 4 y 6 etapas. Para cada una: objetivo, entregable, y un PROMPT listo para copiar
-en Claude (o Claude Code) que le pida ayuda con esa etapa. Cada prompt debe ser
-autocontenido (incluir el contexto del proyecto y el stack) y pedir que le explique
-las decisiones, porque está aprendiendo. Pon cada prompt en un bloque de código.
+# Fases de desarrollo
+Entre 6 y 8 fases secuenciales, desde la configuración del repositorio hasta el despliegue.
+Deben cubrir como mínimo: diseño y arquitectura, backend y base de datos, frontend,
+integración de IA o análisis de datos, seguridad (autenticación, validación de entradas,
+manejo de secretos), pruebas automatizadas y CI/CD, y despliegue en la nube con
+documentación. Para CADA fase incluye:
+- Objetivo: qué se logra al terminarla.
+- Tareas: lista ordenada de pasos concretos.
+- Tecnologías: qué se usa en esta fase.
+- Conceptos que aprenderé.
+- Entregable: qué debe existir y funcionar al cerrarla.
+- Criterio de terminado: cómo verifico que puedo pasar a la siguiente fase.
+- Prompt: un PROMPT listo para copiar en Claude (o Claude Code), en un bloque de código.
+  Debe ser autocontenido (incluir el contexto del proyecto, el stack y lo hecho en las fases
+  anteriores), pedir ayuda solo con esa fase y pedir que me explique las decisiones,
+  porque estoy aprendiendo.
+
+# Prácticas profesionales
+Estructura del repositorio, flujo con Git (ramas, commits, pull requests), linters, pruebas,
+GitHub Actions y qué debe tener el README para el portafolio.
 
 # Cómo mostrarlo
-Cómo presentarlo en su portafolio, en GitHub y en una entrevista.
+Cómo presentarlo en mi CV, LinkedIn, GitHub y en una entrevista de práctica o de trabajo.
 
-# Siguientes pasos
-Qué agregar después del MVP si el proyecto funciona."""
+# Extensiones
+3 a 5 mejoras para hacer el proyecto más avanzado una vez terminada la versión 1.0."""
 
 
 def contexto_idea(nodo: Nodo, nodos: list[Nodo]) -> str:
