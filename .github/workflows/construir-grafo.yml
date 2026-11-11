@@ -33,6 +33,16 @@ permissions:
   contents: write # para hacer commit de graph.json
   pages: write    # para pedirle a GitHub Pages que vuelva a publicar
 
+# SEGURIDAD — código confiable fijado:
+# Los pasos que usan tus claves NO ejecutan el código de main (que podría cambiar
+# alguien con un token de la página robado), sino el de este commit exacto. Este
+# archivo solo se puede modificar con permiso "workflow", que el token de la página
+# no tiene. Del repositorio actual solo se LEEN datos (nodos y pendientes).
+# Para confiar en código nuevo, después de revisarlo y subirlo:
+#     bash scripts/confiar_codigo.sh
+env:
+  CODIGO_CONFIABLE: 0f500a8909f5ef67b0686a58fc62e76cba4e465e
+
 jobs:
   construir:
     runs-on: ubuntu-latest
@@ -41,14 +51,23 @@ jobs:
       # Cada Action va fijada a un commit exacto (SHA) y no a una etiqueta como "v4":
       # una etiqueta se puede mover a otro código; un SHA no. Así nadie puede cambiar
       # lo que se ejecuta con permiso de escritura en el repo.
+      # Datos: el estado actual de main (nodos, pendientes). Aquí nada se ejecuta.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: true # necesario para hacer push de graph.json
+
+      # Código: el commit confiable fijado arriba, en una carpeta aparte
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ env.CODIGO_CONFIABLE }}
+          path: confiable
+          persist-credentials: false
 
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.12"
           cache: pip # guarda los paquetes descargados entre ejecuciones
+          cache-dependency-path: confiable/requirements.txt
 
       # El modelo de embeddings pesa ~470 MB: lo guardamos en caché para no
       # descargarlo en cada ejecución.
@@ -57,10 +76,12 @@ jobs:
           path: ~/.cache/huggingface
           key: modelo-embeddings-v1
 
+      # requirements.txt del código confiable: un paquete malicioso agregado al repo
+      # podría ejecutarse al instalarse o al importarse en el paso con claves.
       - name: Instalar dependencias
         run: |
           pip install torch --index-url https://download.pytorch.org/whl/cpu
-          pip install -r requirements.txt
+          pip install -r confiable/requirements.txt
 
       # Claude Code (versión fija) para usar tu suscripción de Claude sin pagar API
       - name: Instalar Claude Code
@@ -76,9 +97,14 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           YOUTUBE_PROXY: ${{ secrets.YOUTUBE_PROXY }}
           PDF_PRIVATE_KEY: ${{ secrets.PDF_PRIVATE_KEY }}
+          SEGUNDO_CEREBRO_DATOS: ${{ github.workspace }}
+        working-directory: confiable
         run: python scripts/procesar_pendientes.py
 
       - name: Construir graph.json
+        env:
+          SEGUNDO_CEREBRO_DATOS: ${{ github.workspace }}
+        working-directory: confiable
         run: python scripts/build_graph.py
 
       - name: Guardar cambios (fuentes nuevas, pendientes y graph.json)

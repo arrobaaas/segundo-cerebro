@@ -300,8 +300,18 @@ solo en los dispositivos conectados y escribir en el repositorio exige un token 
 | XSS e inyección | Todo el texto se inserta con `textContent`; la CSP prohíbe scripts externos e *inline*; solo se aceptan links `http(s)`. |
 | Clickjacking | La página se niega a mostrarse dentro de un `iframe`. |
 | Cadena de suministro | Librerías JS dentro del repositorio con hash SHA-256; Actions fijadas por SHA; versiones exactas de Python y Claude Code. |
-| *Prompt injection* desde fuentes | Claude solo tiene la herramienta de lectura, no puede ejecutar comandos ni navegar; tope de 10 trabajos por ejecución. |
+| *Prompt injection* desde fuentes | Claude no puede ejecutar comandos, navegar ni leer archivos fuera de su carpeta temporal; un `.env` colado en el repositorio se ignora. |
+| Código malicioso subido con un token robado | La Action ejecuta con tus claves **solo el código de un commit fijado** (`CODIGO_CONFIABLE` en el workflow), que el token de la página no puede cambiar porque no tiene permiso `workflow`. Del repositorio solo lee datos. Para confiar en código nuevo: `bash scripts/confiar_codigo.sh`. |
+| Código remoto en tu computador | El servicio local ejecuta el código de tu carpeta y del clon solo lee datos (`SEGUNDO_CEREBRO_DATOS`). |
+| Abuso del plan de Claude | Máximo 10 trabajos por ejecución y **20 fuentes por día**. Claude Code corre sin herramientas (solo lectura para PDFs, limitada a su carpeta temporal). |
+| Claves filtradas en un resumen | Un resumen que contenga algo parecido a una clave no se guarda. |
 | Datos personales | El repositorio es público: no hay datos privados en `perfil.md` ni en los nodos. |
+
+**Buenas prácticas:** crea el token de la página con expiración (90 días) y revócalo en
+GitHub → *Settings* → *Developer settings* si pierdes un dispositivo. Como todas las páginas de
+`arrobaaas.github.io` comparten el mismo origen, no publiques ahí otros sitios con scripts de
+terceros. Si sospechas que se filtró el token de Claude: `claude setup-token` y
+`bash scripts/configurar_secretos.sh token`.
 
 ## Hoja de ruta
 
