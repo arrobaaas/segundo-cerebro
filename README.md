@@ -56,6 +56,7 @@ rara vez se transforma en algo concreto. **Segundo Cerebro** resuelve eso:
 | 📚 **Lista lateral** | Panel ocultable con todas las ideas agrupadas por tema y un buscador que ignora mayúsculas y tildes. |
 | 🎨 **Tipos de fuente** | Idea, Video, Página web, PDF y Fusionada, cada uno con su color. |
 | ⚡ **Ingesta automática** | Pegas un link o subes un PDF y una **barra de progreso** sigue en vivo cada paso del análisis hasta que aparece la estrella nueva. |
+| 💡 **Ideas a partir de cada fuente** | Cada video, artículo o PDF genera 2 o 3 **nodos de idea propios** (descripción, MVP, tecnologías y tema), enlazados a su fuente. Cada idea puede caer en otra galaxia que su fuente. |
 | 🧩 **Clasificación por tema** | Claude elige el tema de cada fuente nueva; los nodos sin tema se clasifican solos por similitud de embeddings. |
 | 🛠️ **Planes de desarrollo** | Genera un plan por fases (objetivo, tareas, entregable, criterio de terminado y un *prompt* listo por fase) para convertir una idea en proyecto. |
 | 🔒 **Seguro por diseño** | Sin claves en el navegador, PDFs cifrados de extremo a extremo, CSP estricta y dependencias fijadas. |
@@ -183,6 +184,9 @@ python scripts/agregar_fuente.py "https://un-blog.com/articulo" --manual
 # Plan de desarrollo por fases para una idea → planes/<id>.md
 python scripts/desarrollar.py idea-002
 python scripts/desarrollar.py idea-002 -p "¿Qué base de datos me conviene?"
+
+# Convertir en nodos las ideas escritas dentro de fuentes antiguas (sin IA)
+python scripts/extraer_ideas.py
 
 # Reconstruir el grafo (umbral de similitud ajustable)
 python scripts/build_graph.py --umbral 0.4

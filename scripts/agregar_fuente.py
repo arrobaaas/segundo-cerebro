@@ -135,13 +135,20 @@ class IdeaProyecto(BaseModel):
     nombre: str = Field(description="nombre corto del proyecto")
     descripcion: str = Field(description="qué hace y qué problema resuelve, 1-2 oraciones")
     mvp: str = Field(description="la versión mínima que se puede construir en pocas semanas")
+    tecnologias: list[str] = Field(description="3 a 6 tecnologías concretas para construirla")
+    # Cada idea tiene su propio tema: puede caer en otra galaxia que su fuente
+    categoria: Literal[tuple(CATEGORIAS)] = Field(description=(
+        "tema principal de ESTA idea. Opciones: "
+        + "; ".join(f"{clave} = {nombre}" for clave, (nombre, _) in CATEGORIAS.items())))
 
 
 class ResumenFuente(BaseModel):
     titulo: str = Field(description="título corto en español que describa la fuente")
     resumen: str = Field(description="3 a 5 oraciones: de qué trata y por qué le sirve a su carrera")
     aprendizajes: list[str] = Field(description="3 a 5 aprendizajes concretos y técnicos")
-    ideas_proyecto: list[IdeaProyecto] = Field(description="2 o 3 ideas de proyecto viables inspiradas en la fuente")
+    ideas_proyecto: list[IdeaProyecto] = Field(description=(
+        "2 o 3 ideas de proyecto viables inspiradas en la fuente. Cada una se guarda como un "
+        "nodo propio del grafo: que sean concretas, distintas entre sí y útiles para el portafolio"))
     tecnologias: list[str] = Field(description="tecnologías, herramientas o conceptos clave mencionados")
     # Literal = la API solo acepta una de estas claves (structured outputs)
     categoria: Literal[tuple(CATEGORIAS)] = Field(description=(
@@ -193,7 +200,8 @@ después, con exactamente esta forma:
   "resumen": "3 a 5 oraciones: de qué trata y por qué me sirve en mi carrera",
   "aprendizajes": ["aprendizaje técnico concreto", "..."],
   "ideas_proyecto": [
-    {"nombre": "nombre corto", "descripcion": "qué hace y qué problema resuelve", "mvp": "versión mínima construible en pocas semanas"}
+    {"nombre": "nombre corto", "descripcion": "qué hace y qué problema resuelve", "mvp": "versión mínima construible en pocas semanas",
+     "tecnologias": ["tecnología concreta", "..."], "categoria": "web | ia | datos | ciberseguridad | juegos | movil | nube | automatizacion | carrera | otros"}
   ],
   "tecnologias": ["tecnología o concepto clave", "..."],
   "categoria": "una de: web, ia, datos, ciberseguridad, juegos, movil, nube, automatizacion, carrera, otros"
@@ -242,11 +250,31 @@ def armar_contenido(r: ResumenFuente) -> str:
     los primeros ~128 tokens, así que lo más representativo debe ir al inicio."""
     partes = [r.resumen.strip(), "Aprendizajes clave:\n" + "\n".join(f"• {a}" for a in r.aprendizajes)]
     if r.ideas_proyecto:
-        ideas = "\n".join(f"• {i.nombre}: {i.descripcion} MVP: {i.mvp}" for i in r.ideas_proyecto)
-        partes.append("Ideas de proyecto que inspira:\n" + ideas)
+        # El detalle (MVP, tecnologías) vive en el nodo propio de cada idea
+        ideas = "\n".join(f"• {i.nombre}: {i.descripcion}" for i in r.ideas_proyecto)
+        partes.append("Ideas de proyecto que inspira (cada una es una estrella propia):\n" + ideas)
     if r.tecnologias:
         partes.append("Tecnologías: " + ", ".join(r.tecnologias))
     return "\n\n".join(partes)
+
+
+def contenido_idea(idea: IdeaProyecto, titulo_fuente: str) -> str:
+    partes = [idea.descripcion.strip(), f"MVP: {idea.mvp.strip()}"]
+    if idea.tecnologias:
+        partes.append("Tecnologías: " + ", ".join(idea.tecnologias))
+    partes.append(f"Nació de la fuente: {titulo_fuente}")
+    return "\n\n".join(partes)
+
+
+def crear_ideas(r: ResumenFuente, id_fuente: str) -> list[str]:
+    """Crea un nodo "idea" por cada idea de proyecto, enlazado a su fuente (padre)."""
+    ids = []
+    for idea in r.ideas_proyecto:
+        ruta = guardar_nodo("idea", idea.nombre, contenido_idea(idea, r.titulo),
+                            padres=[id_fuente], categoria=idea.categoria)
+        ids.append(ruta.stem)
+        print(f"  💡 {ruta.stem}: {idea.nombre}")
+    return ids
 
 
 # --- PDF (lo usa procesar_pendientes.py) -------------------------------------
@@ -283,6 +311,7 @@ def agregar_pdf(pdf: bytes, nombre: str, url: str | None = None) -> int:
     ruta = guardar_nodo("fuente", r.titulo, armar_contenido(r), fuente_url=url,
                         categoria=r.categoria, origen="pdf")
     print(f"✔ Fuente creada: {ruta.relative_to(RAIZ)} — {r.titulo}")
+    crear_ideas(r, ruta.stem)
     return 0
 
 
@@ -346,8 +375,7 @@ def main(argv: list[str] | None = None) -> int:
     ruta = guardar_nodo("fuente", r.titulo, armar_contenido(r), fuente_url=url,
                         categoria=r.categoria, origen="video" if video_id else "web")
     print(f"✔ Fuente creada: {ruta.relative_to(RAIZ)} — {r.titulo}")
-    for idea in r.ideas_proyecto:
-        print(f"  💡 {idea.nombre}")
+    crear_ideas(r, ruta.stem)
 
     if args.sin_build:
         return 0

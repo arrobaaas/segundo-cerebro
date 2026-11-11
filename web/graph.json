@@ -84,6 +84,84 @@
       "origen": null
     },
     {
+      "id": "idea-007",
+      "titulo": "AgentForge: banco de pruebas de mejoras iterativas con IA",
+      "tipo": "idea",
+      "contenido": "Una plataforma web que hace correr a un agente LLM en ciclos de 'mejora este proyecto' sobre un repositorio de código y en cada iteración mide la calidad: pruebas que pasan, cobertura, linters y hallazgos de seguridad (SAST). Así responde con datos lo que el video solo muestra de forma anecdótica: ¿la IA mejora o degrada el software con cada iteración? Combina IA, datos, web y ciberseguridad.\n\nMVP: Fase 1: un script en Python que toma un repositorio pequeño (por ejemplo, un juego en JavaScript/Canvas), llama a la API de un LLM para proponer un parche, lo aplica en una rama de Git, ejecuta pytest/jest + Bandit/Semgrep y guarda las métricas en PostgreSQL. Fase 2: un panel web (FastAPI + gráficos) con la evolución por iteración y el diff de cada commit. Fase 3: CI/CD con GitHub Actions, sandbox con Docker para ejecutar el código generado de forma segura y despliegue en la nube.\n\nNació de la fuente: Mejora iterativa de un clon de Minecraft con IA generativa (100 iteraciones)",
+      "fecha": "2026-11-11",
+      "fuente_url": null,
+      "padres": [
+        "fuente-005"
+      ],
+      "categoria": "ia",
+      "origen": null
+    },
+    {
+      "id": "idea-008",
+      "titulo": "Servidor MCP seguro para assets de juegos",
+      "tipo": "idea",
+      "contenido": "Un servidor MCP propio que expone herramientas acotadas (generar textura, buscar asset, validar formato) a un agente de IA, con autenticación, límites de uso, registro de auditoría y filtros contra la inyección de prompts. Así ves en la práctica la integración que usa el video, pero con el foco en seguridad.\n\nMVP: Un servidor MCP en Python con 2-3 herramientas: generar una imagen con una API abierta o con Stable Diffusion local, redimensionarla a una textura de 16x16/64x64 y guardarla versionada. Un registro de cada llamada en SQL, una API key por cliente y un límite de llamadas. Pruebas unitarias y un pipeline de CI.\n\nNació de la fuente: Mejora iterativa de un clon de Minecraft con IA generativa (100 iteraciones)",
+      "fecha": "2026-11-11",
+      "fuente_url": null,
+      "padres": [
+        "fuente-005"
+      ],
+      "categoria": "ciberseguridad",
+      "origen": null
+    },
+    {
+      "id": "idea-009",
+      "titulo": "VoxelWeb con NPCs inteligentes",
+      "tipo": "idea",
+      "contenido": "Un clon de Minecraft que corre en el navegador (Three.js) con generación procedural y NPCs cuyos diálogos y misiones genera un LLM a partir del estado del mundo, con telemetría de jugadores para analizar el comportamiento.\n\nMVP: Fase 1: un mundo de vóxeles con chunks, ruido Perlin para el terreno y poner/quitar bloques en Three.js. Fase 2: un backend en FastAPI que guarda los mundos y genera diálogos de NPCs vía LLM con un contexto limitado. Fase 3: eventos de juego enviados a una base de datos y un panel de análisis, desplegado en la nube con CI/CD.\n\nNació de la fuente: Mejora iterativa de un clon de Minecraft con IA generativa (100 iteraciones)",
+      "fecha": "2026-11-11",
+      "fuente_url": null,
+      "padres": [
+        "fuente-005"
+      ],
+      "categoria": "juegos",
+      "origen": null
+    },
+    {
+      "id": "idea-010",
+      "titulo": "SecLint: analizador estático de vulnerabilidades con IA",
+      "tipo": "idea",
+      "contenido": "Una herramienta web que analiza código Python o JavaScript para detectar patrones inseguros, como inyección SQL, secretos en el código o uso de eval. Usa técnicas de compiladores (tokens y AST), y un LLM explica cada hallazgo y propone cómo corregirlo. Combina ciberseguridad, IA y desarrollo web.\n\nMVP: Fase 1: una herramienta de línea de comandos en Python que recorre el AST con el módulo ast y detecta 5 reglas de seguridad, con pruebas en pytest y GitHub Actions. Fase 2: una API en FastAPI con un frontend donde pegas o subes código y ves los hallazgos. Fase 3: explicaciones con un LLM y una GitHub Action que comente los PR, desplegada en la nube.\n\nNació de la fuente: Qué se aprende en 5 años de Ingeniería Informática y cómo sacarle partido",
+      "fecha": "2026-11-11",
+      "fuente_url": null,
+      "padres": [
+        "fuente-006"
+      ],
+      "categoria": "ciberseguridad",
+      "origen": null
+    },
+    {
+      "id": "idea-011",
+      "titulo": "NetWatch: monitor de tráfico de red con detección de anomalías",
+      "tipo": "idea",
+      "contenido": "Un dashboard web que captura tráfico de red (o lee archivos pcap), guarda los flujos en SQL y usa un modelo de machine learning para detectar comportamientos raros, como escaneos de puertos o picos anómalos. Aplica lo de redes de computadoras y combina datos, IA y ciberseguridad.\n\nMVP: Fase 1: un script con Scapy que procesa archivos pcap y guarda los flujos en PostgreSQL, con pruebas unitarias. Fase 2: un dashboard web con gráficos de tráfico por IP y puerto. Fase 3: detección de anomalías con Isolation Forest sobre el dataset CIC-IDS, alertas automáticas y despliegue con Docker y CI/CD en la nube.\n\nNació de la fuente: Qué se aprende en 5 años de Ingeniería Informática y cómo sacarle partido",
+      "fecha": "2026-11-11",
+      "fuente_url": null,
+      "padres": [
+        "fuente-006"
+      ],
+      "categoria": "datos",
+      "origen": null
+    },
+    {
+      "id": "idea-012",
+      "titulo": "MiniRules: un lenguaje de reglas para alertas de datos",
+      "tipo": "idea",
+      "contenido": "Un pequeño lenguaje propio (un DSL) para escribir reglas como 'si ventas_dia < promedio_7d * 0.5 entonces alertar', con su propio compilador o intérprete. Se ejecuta sobre datos SQL desde una aplicación web. Lleva la experiencia de construir un compilador a un caso de uso real de datos.\n\nMVP: Fase 1: un lexer y un parser (con Lark o escritos a mano) que conviertan las reglas en un AST y las evalúen sobre un CSV, con buena cobertura de pruebas. Fase 2: traducir las reglas a consultas SQL y ejecutarlas de forma programada. Fase 3: un editor web con validación de sintaxis, un historial de alertas, autenticación y despliegue en la nube.\n\nNació de la fuente: Qué se aprende en 5 años de Ingeniería Informática y cómo sacarle partido",
+      "fecha": "2026-11-11",
+      "fuente_url": null,
+      "padres": [
+        "fuente-006"
+      ],
+      "categoria": "automatizacion",
+      "origen": null
+    },
+    {
       "id": "fuente-001",
       "titulo": "(Ejemplo) Video: API REST con FastAPI desde cero",
       "tipo": "fuente",
@@ -263,6 +341,96 @@
       "tipo": "padre"
     },
     {
+      "source": "idea-007",
+      "target": "idea-008",
+      "similitud": 0.538,
+      "tipo": "similitud"
+    },
+    {
+      "source": "idea-007",
+      "target": "idea-010",
+      "similitud": 0.607,
+      "tipo": "similitud"
+    },
+    {
+      "source": "idea-007",
+      "target": "fuente-001",
+      "similitud": 0.468,
+      "tipo": "similitud"
+    },
+    {
+      "source": "idea-007",
+      "target": "fuente-003",
+      "similitud": 0.456,
+      "tipo": "similitud"
+    },
+    {
+      "source": "idea-007",
+      "target": "fuente-004",
+      "similitud": 0.484,
+      "tipo": "similitud"
+    },
+    {
+      "source": "idea-007",
+      "target": "fusionada-001",
+      "similitud": 0.496,
+      "tipo": "similitud"
+    },
+    {
+      "source": "idea-008",
+      "target": "idea-009",
+      "similitud": 0.536,
+      "tipo": "similitud"
+    },
+    {
+      "source": "idea-008",
+      "target": "idea-010",
+      "similitud": 0.542,
+      "tipo": "similitud"
+    },
+    {
+      "source": "idea-008",
+      "target": "fuente-005",
+      "similitud": 0.492,
+      "tipo": "padre"
+    },
+    {
+      "source": "idea-009",
+      "target": "fuente-005",
+      "similitud": 0.698,
+      "tipo": "padre"
+    },
+    {
+      "source": "idea-010",
+      "target": "idea-011",
+      "similitud": 0.517,
+      "tipo": "similitud"
+    },
+    {
+      "source": "idea-010",
+      "target": "idea-012",
+      "similitud": 0.53,
+      "tipo": "similitud"
+    },
+    {
+      "source": "idea-010",
+      "target": "fuente-001",
+      "similitud": 0.46,
+      "tipo": "similitud"
+    },
+    {
+      "source": "idea-010",
+      "target": "fuente-003",
+      "similitud": 0.482,
+      "tipo": "similitud"
+    },
+    {
+      "source": "idea-010",
+      "target": "fusionada-001",
+      "similitud": 0.515,
+      "tipo": "similitud"
+    },
+    {
       "source": "fuente-001",
       "target": "fuente-003",
       "similitud": 0.52,
@@ -312,21 +480,33 @@
     },
     {
       "source": "idea-004",
-      "target": "fusionada-003",
-      "similitud": 0.372,
+      "target": "idea-007",
+      "similitud": 0.4,
       "tipo": "similitud"
     },
     {
-      "source": "fuente-005",
-      "target": "fuente-003",
-      "similitud": 0.426,
-      "tipo": "similitud"
+      "source": "idea-007",
+      "target": "fuente-005",
+      "similitud": 0.381,
+      "tipo": "padre"
     },
     {
-      "source": "fuente-006",
-      "target": "fuente-002",
-      "similitud": 0.447,
-      "tipo": "similitud"
+      "source": "idea-010",
+      "target": "fuente-006",
+      "similitud": 0.381,
+      "tipo": "padre"
+    },
+    {
+      "source": "idea-011",
+      "target": "fuente-006",
+      "similitud": 0.13,
+      "tipo": "padre"
+    },
+    {
+      "source": "idea-012",
+      "target": "fuente-006",
+      "similitud": 0.322,
+      "tipo": "padre"
     },
     {
       "source": "fusionada-002",

@@ -445,6 +445,11 @@ function mostrarPanel(nodo) {
   el('panel-padres-seccion').hidden = padres.length === 0;
   llenarLista(el('panel-padres'), padres.map((id) => ({ nodo: nodosPorId.get(id) })));
 
+  // Ideas que nacieron de este nodo (p. ej. las ideas de proyecto de una fuente)
+  const hijas = [...nodosPorId.values()].filter((n) => (n.padres ?? []).includes(nodo.id));
+  el('panel-hijas-seccion').hidden = hijas.length === 0;
+  llenarLista(el('panel-hijas'), hijas.map((n) => ({ nodo: n })));
+
   // Conexiones, ordenadas de más a menos similar
   const conexiones = [...enlacesPorId.get(nodo.id)].map((e) => {
     const otroId = idDe(e.source) === nodo.id ? idDe(e.target) : idDe(e.source);
