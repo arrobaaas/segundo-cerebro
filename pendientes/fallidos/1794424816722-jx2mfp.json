@@ -1,4 +1,0 @@
-{
-  "url": "https://www.youtube.com/watch?v=GPJ6Y8ZDlUo",
-  "error": "Falta conectar Claude: agrega en GitHub el secreto CLAUDE_CODE_OAUTH_TOKEN (tu suscripción, con `claude setup-token`) o ANTHROPIC_API_KEY (API de pago)."
-}
