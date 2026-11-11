@@ -190,13 +190,19 @@ function leerRespuesta(texto) {
   if (!esLista(datos.aprendizajes ?? []) || !esLista(datos.tecnologias ?? [])) {
     throw new Error('"aprendizajes" y "tecnologias" deben ser listas de textos.');
   }
-  const ideas = (datos.ideas_proyecto ?? []).filter((i) => i && esTexto(i.nombre));
+  // Límites de tamaño: evitan que un texto pegado gigante (por error o a propósito)
+  // termine como un archivo enorme en el repo que haga lenta la página.
+  const corto = (v, max) => String(v ?? '').trim().slice(0, max);
+  const ideas = (datos.ideas_proyecto ?? [])
+    .filter((i) => i && esTexto(i.nombre))
+    .slice(0, 5)
+    .map((i) => ({ nombre: corto(i.nombre, 120), descripcion: corto(i.descripcion, 600), mvp: corto(i.mvp, 600) }));
   return {
-    titulo: datos.titulo.trim(),
-    resumen: datos.resumen.trim(),
-    aprendizajes: datos.aprendizajes ?? [],
+    titulo: corto(datos.titulo, 150),
+    resumen: corto(datos.resumen, 2000),
+    aprendizajes: (datos.aprendizajes ?? []).slice(0, 8).map((a) => corto(a, 300)),
     ideas,
-    tecnologias: datos.tecnologias ?? [],
+    tecnologias: (datos.tecnologias ?? []).slice(0, 15).map((x) => corto(x, 60)),
   };
 }
 
@@ -206,7 +212,7 @@ function armarContenido(r) {
   const partes = [r.resumen, 'Aprendizajes clave:\n' + r.aprendizajes.map((a) => `• ${a}`).join('\n')];
   if (r.ideas.length) {
     partes.push('Ideas de proyecto que inspira:\n' +
-      r.ideas.map((i) => `• ${i.nombre}: ${i.descripcion ?? ''} MVP: ${i.mvp ?? ''}`).join('\n'));
+      r.ideas.map((i) => `• ${i.nombre}: ${i.descripcion} MVP: ${i.mvp}`).join('\n'));
   }
   if (r.tecnologias.length) partes.push('Tecnologías: ' + r.tecnologias.join(', '));
   return partes.join('\n\n');

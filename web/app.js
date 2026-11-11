@@ -15,6 +15,15 @@ import { UnrealBloomPass } from './vendor/UnrealBloomPass.js';
 // Nuestro módulo para agregar fuentes desde la web (ver agregar.js)
 import { iniciarAgregar } from './agregar.js';
 
+// --- Anti-clickjacking -------------------------------------------
+// GitHub Pages no deja enviar el encabezado X-Frame-Options, y la CSP en <meta>
+// no admite frame-ancestors. Así que si otra web mete esta página en un iframe
+// (para engañarte y que hagas clic en "Guardar" sin verla), no mostramos nada.
+if (window.top !== window.self) {
+  document.documentElement.style.display = 'none';
+  throw new Error('Segundo Cerebro no se puede mostrar dentro de otra página.');
+}
+
 // --- Configuración visual ------------------------------------
 
 // Un color por tipo de nodo (los mismos de style.css)
