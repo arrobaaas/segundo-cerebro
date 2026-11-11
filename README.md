@@ -12,6 +12,7 @@
 ![GitHub Actions](https://img.shields.io/badge/CI-GitHub%20Actions-2088FF?logo=githubactions&logoColor=white)
 ![Claude](https://img.shields.io/badge/IA-Claude-D97757)
 ![Embeddings](https://img.shields.io/badge/NLP-sentence--transformers-FF6F00)
+[![Licencia: MIT](https://img.shields.io/badge/licencia-MIT-22c55e)](LICENSE)
 
 <img src="docs/captura-galaxias.png" alt="Vista de galaxias: las ideas agrupadas por tema, con la lista lateral abierta" width="900">
 
@@ -33,6 +34,7 @@
 - [Formato de los datos](#formato-de-los-datos)
 - [Seguridad](#seguridad)
 - [Hoja de ruta](#hoja-de-ruta)
+- [Licencia](#licencia)
 
 ## El problema
 
@@ -311,6 +313,13 @@ solo en los dispositivos conectados y escribir en el repositorio exige un token 
 - [ ] **Ideas fusionadas automáticas**: combinar con IA nodos similares en una idea nueva (`fusionar.py`)
 - [ ] Control deslizante del umbral de similitud en la web
 - [ ] Exportar un plan de desarrollo como *issues* de GitHub
+
+## Licencia
+
+Distribuido bajo la licencia **MIT**: puedes usar, copiar, modificar y distribuir el código
+libremente, manteniendo el aviso de copyright. Ver [`LICENSE`](LICENSE).
+
+Las librerías de `web/vendor/` conservan sus propias licencias.
 
 ---
 
