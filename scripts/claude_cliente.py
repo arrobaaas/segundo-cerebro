@@ -28,11 +28,13 @@ import anthropic
 from dotenv import load_dotenv
 from pydantic import BaseModel
 
-from cerebro import RAIZ
+from cerebro import CODIGO
 
 # load_dotenv copia las variables de .env al entorno (os.environ).
 # El SDK de Anthropic lee ANTHROPIC_API_KEY desde ahí automáticamente.
-load_dotenv(RAIZ / ".env")
+# Desde la carpeta del CÓDIGO, nunca desde los datos: un .env colado en el repo
+# podría, por ejemplo, desviar las llamadas a otro servidor.
+load_dotenv(CODIGO / ".env")
 
 MODELO = "claude-opus-5-5"
 # Precio en USD por millón de tokens (entrada, salida) para mostrar el costo
@@ -162,10 +164,12 @@ def _estructurado_claude_code(system: str, mensaje: str | list, modelo_salida: t
     esquema = _esquema_estricto(modelo_salida.model_json_schema())
 
     with tempfile.TemporaryDirectory() as carpeta:
+        hay_pdf = False
         if isinstance(mensaje, list):
             partes = []
             for i, bloque in enumerate(mensaje):
                 if bloque.get("type") == "document":
+                    hay_pdf = True
                     nombre = f"documento-{i}.pdf"
                     Path(carpeta, nombre).write_bytes(base64.b64decode(bloque["source"]["data"]))
                     partes.append(f"Lee COMPLETO el archivo PDF «{nombre}» (en la carpeta actual) "
@@ -181,7 +185,9 @@ def _estructurado_claude_code(system: str, mensaje: str | list, modelo_salida: t
             "--json-schema", json.dumps(esquema),
             "--model", MODELO, "--effort", esfuerzo,
             "--system-prompt", system,
-            "--tools", "Read",           # solo leer archivos de esta carpeta temporal
+            # Mínimo privilegio: sin herramientas, salvo Read para leer el PDF. Probado:
+            # Read no puede abrir archivos fuera de esta carpeta temporal (se deniega).
+            "--tools", "Read" if hay_pdf else "",
             "--no-session-persistence",
         ]
         try:

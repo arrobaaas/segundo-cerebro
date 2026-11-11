@@ -22,6 +22,7 @@ Formato de cada nodo (archivo .md):
 
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass, field
 from datetime import date
@@ -31,7 +32,13 @@ import frontmatter  # lee/escribe Markdown con un bloque YAML al inicio
 
 # --- Rutas ---------------------------------------------------------------
 # Path(__file__) es este archivo; .parent.parent sube de scripts/ a la raíz.
-RAIZ = Path(__file__).resolve().parent.parent
+# CODIGO: carpeta del código (scripts, .env). RAIZ: carpeta de los DATOS (nodos,
+# pendientes, graph.json). Normalmente son la misma. La GitHub Action y el servicio
+# local los separan (variable SEGUNDO_CEREBRO_DATOS): ejecutan código confiable y solo
+# LEEN datos del repositorio, así un cambio malicioso en el repo no puede ejecutarse
+# con tus claves ni en tu computador.
+CODIGO = Path(__file__).resolve().parent.parent
+RAIZ = Path(os.environ.get("SEGUNDO_CEREBRO_DATOS") or CODIGO).resolve()
 
 # Cada tipo de nodo vive en su propia carpeta
 CARPETAS = {

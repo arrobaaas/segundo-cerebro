@@ -224,6 +224,19 @@ def resumir_manual(texto: str, url: str, titulo_original: str | None, es_video: 
     raise ErrorClaude("No se recibió una respuesta válida después de 3 intentos.")
 
 
+# Si una fuente maliciosa lograra que Claude escribiera una clave en el resumen, este
+# filtro impide guardarla (el repositorio es público). Mismos patrones que .githooks/pre-commit.
+PATRON_SECRETO = re.compile(
+    r"sk-ant-[A-Za-z0-9_-]{20,}|github_pat_[A-Za-z0-9_]{20,}|gh[pousr]_[A-Za-z0-9]{30,}"
+    r"|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY|AIza[0-9A-Za-z_-]{35}")
+
+
+def revisar_secretos(r: ResumenFuente) -> None:
+    if PATRON_SECRETO.search(r.model_dump_json()):
+        raise ErrorExtraccion("El resumen contiene algo que parece una clave secreta; "
+                              "por seguridad no se guardó.")
+
+
 def armar_contenido(r: ResumenFuente) -> str:
     """Texto del nodo. El resumen va primero: el modelo de embeddings solo lee
     los primeros ~128 tokens, así que lo más representativo debe ir al inicio."""
@@ -264,7 +277,8 @@ def agregar_pdf(pdf: bytes, nombre: str, url: str | None = None) -> int:
     ]
     try:
         r = pedir_estructurado(SYSTEM_RESUMEN.format(perfil=leer_perfil()), mensaje, ResumenFuente)
-    except ErrorClaude as e:
+        revisar_secretos(r)
+    except (ErrorClaude, ErrorExtraccion) as e:
         return salir_con_error(e)
     ruta = guardar_nodo("fuente", r.titulo, armar_contenido(r), fuente_url=url,
                         categoria=r.categoria, origen="pdf")
@@ -325,6 +339,10 @@ def main(argv: list[str] | None = None) -> int:
         return salir_con_error(e)
 
     # 3) Guardar el nodo
+    try:
+        revisar_secretos(r)
+    except ErrorExtraccion as e:
+        return salir_con_error(e)
     ruta = guardar_nodo("fuente", r.titulo, armar_contenido(r), fuente_url=url,
                         categoria=r.categoria, origen="video" if video_id else "web")
     print(f"✔ Fuente creada: {ruta.relative_to(RAIZ)} — {r.titulo}")

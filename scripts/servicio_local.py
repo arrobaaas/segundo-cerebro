@@ -7,7 +7,8 @@ Servicio local: procesa en TU computador los videos de YouTube que agregas desde
 Cómo funciona (cada 30 segundos):
     1. Actualiza una copia APARTE del repositorio (~/.local/share/segundo-cerebro/clon),
        así nunca toca tu carpeta de trabajo ni tus cambios sin guardar.
-    2. Si hay videos en pendientes/videos/, los procesa con procesar_pendientes.py --videos:
+    2. Si hay videos en pendientes/videos/, los procesa con procesar_pendientes.py --videos
+       (el de TU carpeta: del clon solo se leen datos, nunca se ejecuta su código):
        transcripción (desde tu conexión) → resumen con tu sesión de Claude Code.
     3. Sube la fuente nueva (git push). Eso dispara la GitHub Action, que reconstruye
        el grafo y publica la página.
@@ -82,10 +83,12 @@ def una_vuelta() -> None:
     if not videos:
         return
     log(f"▶ {len(videos)} video(s) en cola. Procesando...")
-    # Se ejecuta el script de la copia (la versión más reciente subida a GitHub),
-    # con la sesión de Claude Code de este computador (USAR_CLAUDE_CODE=1).
-    subprocess.run([sys.executable, str(CLON / "scripts" / "procesar_pendientes.py"), "--videos"],
-                   cwd=CLON, env={**os.environ, "USAR_CLAUDE_CODE": "1"}, check=False)
+    # SEGURIDAD: se ejecuta el código de TU carpeta (RAIZ), nunca el del clon. Del clon
+    # solo se leen datos (SEGUNDO_CEREBRO_DATOS). Así, aunque alguien subiera código
+    # malicioso a GitHub (p. ej. con un token robado), tu computador no lo ejecutaría.
+    entorno = {**os.environ, "USAR_CLAUDE_CODE": "1", "SEGUNDO_CEREBRO_DATOS": str(CLON)}
+    subprocess.run([sys.executable, str(RAIZ / "scripts" / "procesar_pendientes.py"), "--videos"],
+                   cwd=RAIZ, env=entorno, check=False)
     subir_cambios()
 
 

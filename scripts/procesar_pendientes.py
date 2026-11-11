@@ -38,6 +38,7 @@ import json
 import os
 import re
 import sys
+from datetime import date
 
 from cerebro import RAIZ, leer_nodos
 
@@ -48,8 +49,10 @@ VIDEOS = PENDIENTES / "videos"
 FALLIDOS = PENDIENTES / "fallidos"
 LISTOS = PENDIENTES / "listos"
 
-# Tope por ejecución: si por error se agregan muchos links, no se gasta de más.
+# Topes de uso: aunque alguien llenara la cola (p. ej. con un token robado), no podría
+# agotar tu plan de Claude.
 MAX_POR_EJECUCION = 10
+LIMITE_DIARIO = 20  # fuentes nuevas por día, contando todas las vías
 
 
 def leer_pendiente(archivo) -> dict:
@@ -141,7 +144,11 @@ def main(argv: list[str] | None = None) -> int:
             print("▶ Video de YouTube: queda en pendientes/videos/ para tu computador.")
             continue
         antes = {n.id for n in leer_nodos()}
-        if sin_key:
+        hoy = date.today().isoformat()
+        if sum(1 for n in leer_nodos() if n.tipo == "fuente" and n.fecha == hoy) >= LIMITE_DIARIO:
+            error = (f"Se alcanzó el límite de {LIMITE_DIARIO} fuentes por día (protege tu plan "
+                     "de Claude). Inténtalo mañana.")
+        elif sin_key:
             error = ("Falta conectar Claude: agrega en GitHub el secreto CLAUDE_CODE_OAUTH_TOKEN "
                      "(tu suscripción, con `claude setup-token`) o ANTHROPIC_API_KEY (API de pago).")
         else:
