@@ -5,6 +5,8 @@ tipo: fuente
 fecha: '2026-10-03'
 fuente_url: https://example.com/video-fastapi
 padres: []
+categoria: web
+origen: video
 ---
 
 Explica cómo construir una API REST en Python con FastAPI: rutas, validación con Pydantic, documentación automática con Swagger y conexión a una base de datos SQLite.

@@ -7,6 +7,7 @@ fuente_url: null
 padres:
 - idea-002
 - fuente-003
+categoria: ia
 ---
 
 Un bot de Discord que responde dudas del curso buscando en los apuntes y enunciados del profesor con embeddings, y cita el documento de donde sacó la respuesta.

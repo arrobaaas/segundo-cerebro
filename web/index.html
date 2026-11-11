@@ -19,11 +19,28 @@
   <!-- Aquí la librería dibuja el canvas 3D -->
   <div id="grafo" aria-label="Grafo 3D de ideas"></div>
 
-  <!-- Encabezado y leyenda de colores (se rellena desde app.js) -->
+  <!-- Encabezado, leyenda de colores (se rellena desde app.js) y botones de vista -->
   <header id="encabezado">
     <h1>Segundo Cerebro</h1>
     <ul id="leyenda"></ul>
+    <div class="barra-vista">
+      <button id="btn-lista" type="button" class="boton-vista" aria-controls="lista"
+              aria-expanded="false">☰ Lista</button>
+      <button id="btn-galaxias" type="button" class="boton-vista" aria-pressed="false">
+        🌌 Separar en galaxias</button>
+    </div>
   </header>
+
+  <!-- Lista lateral: todas las ideas agrupadas por tema -->
+  <aside id="lista" class="lateral" aria-hidden="true" aria-labelledby="lista-titulo">
+    <div class="lista-cabecera">
+      <h2 id="lista-titulo">Ideas por tema</h2>
+      <button id="cerrar-lista" class="cerrar" type="button" aria-label="Cerrar lista">✕</button>
+    </div>
+    <input id="buscar" type="search" class="campo" placeholder="Buscar…" autocomplete="off"
+           aria-label="Buscar ideas">
+    <div id="lista-secciones"></div>
+  </aside>
 
   <!-- Ayuda de controles: cambia el texto según sea mouse o pantalla táctil -->
   <p id="ayuda">

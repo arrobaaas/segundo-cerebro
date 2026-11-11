@@ -5,6 +5,8 @@ tipo: fuente
 fecha: '2026-10-09'
 fuente_url: https://example.com/video-rag
 padres: []
+categoria: ia
+origen: video
 ---
 
 Explica RAG: dividir documentos en fragmentos, convertirlos en embeddings, buscar los más parecidos a la pregunta y entregárselos a un modelo de lenguaje para que responda con esa información.

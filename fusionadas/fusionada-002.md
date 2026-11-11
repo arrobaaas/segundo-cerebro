@@ -9,6 +9,7 @@ padres:
 - idea-005
 - fuente-002
 - fuente-004
+categoria: carrera
 ---
 
 Mi portafolio muestra, junto a cada proyecto, gráficos actualizados de su actividad en GitHub, para que un reclutador vea que programo de forma constante.

@@ -214,6 +214,18 @@ El plan incluye viabilidad, MVP, stack, etapas con **un prompt listo por etapa**
 mostrarlo en el portafolio y siguientes pasos. Aparece en el panel de la web con un
 botón *Copiar* en cada prompt.
 
+## Ver el grafo: tipos, temas y galaxias
+
+- **Colores por tipo:** Idea (morado), Video (rojo), Página web (naranjo), PDF (amarillo) y
+  Fusionada (verde). Las fuentes se separan según de dónde vinieron.
+- **☰ Lista:** panel a la izquierda (se oculta) con todas las ideas agrupadas por tema y un
+  buscador (ignora mayúsculas y tildes). Al tocar una, el grafo vuela a esa estrella.
+- **🌌 Separar en galaxias / ✦ Juntar ideas:** separa las estrellas en una galaxia por tema,
+  cada una con su nebulosa de color y su nombre; los enlaces entre galaxias se atenúan.
+  La página recuerda en ese navegador si dejaste la lista abierta y las galaxias activas.
+- Los temas se definen en `CATEGORIAS` (`scripts/cerebro.py`). Claude elige el tema al
+  analizar una fuente nueva; las ideas sin tema se clasifican solas al construir el grafo.
+
 ## Formato de un nodo (`.md`)
 
 ```markdown
@@ -224,6 +236,10 @@ tipo: idea            # idea | fuente | fusionada (debe calzar con la carpeta)
 fecha: '2026-11-09'
 fuente_url: null      # URL si es una fuente
 padres: []            # ids de origen si es una fusionada
+categoria: web        # opcional: web | ia | datos | ciberseguridad | juegos | movil |
+                      #   nube | automatizacion | carrera | otros. Si falta, se asigna
+                      #   sola comparando el significado (embeddings) con cada tema.
+origen: video         # solo fuentes: video | web | pdf (si falta, se deduce del link)
 ---
 
 El contenido de la idea en texto libre.

@@ -12,6 +12,7 @@
   --idea: #a855f7;
   --fuente: #f97316;
   --fusionada: #22c55e;
+  --ancho-lateral: 300px;
 }
 
 * { box-sizing: border-box; }
@@ -64,6 +65,92 @@ html, body {
   color: var(--texto-suave);
 }
 #leyenda li { display: flex; align-items: center; gap: 6px; }
+
+/* El encabezado se corre a la derecha cuando la lista lateral está abierta */
+#encabezado { transition: left 0.25s ease; }
+body.lista-abierta #encabezado { left: calc(var(--ancho-lateral) + 16px); }
+
+/* Botones "☰ Lista" y "🌌 Galaxias" */
+.barra-vista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  pointer-events: auto; /* el encabezado deja pasar clics; los botones sí los reciben */
+}
+.boton-vista {
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+  background: rgba(20, 20, 28, 0.85);
+  color: var(--texto);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.boton-vista:hover { background: rgba(40, 40, 52, 0.95); }
+.boton-vista[aria-pressed="true"], .boton-vista[aria-expanded="true"] {
+  border-color: rgba(168, 85, 247, 0.7);
+  background: rgba(88, 28, 135, 0.55);
+}
+
+/* ---------- Lista lateral (izquierda): ideas agrupadas por tema ---------- */
+.lateral {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: var(--ancho-lateral);
+  max-width: 100%;
+  height: 100%;
+  padding: 18px 14px 24px;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border-right: 1px solid var(--borde);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transform: translateX(-100%);
+  transition: transform 0.25s ease;
+  z-index: 2;
+}
+.lateral.abierto { transform: translateX(0); }
+.lista-cabecera { position: relative; min-height: 36px; }
+.lista-cabecera h2 { margin: 6px 44px 12px 4px; font-size: 16px; }
+.lista-cabecera .cerrar { top: 0; right: 0; }
+#lista-secciones {
+  flex: 1;
+  overflow-y: auto;
+  margin: 0 -6px;
+  padding: 0 6px;
+  overscroll-behavior: contain;
+}
+.seccion { margin-bottom: 6px; }
+.seccion > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 6px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+  cursor: pointer;
+  list-style: none;
+}
+.seccion > summary::-webkit-details-marker { display: none; }
+.seccion > summary::before { content: "▸"; transition: transform 0.15s ease; }
+.seccion[open] > summary::before { transform: rotate(90deg); }
+.seccion > summary:hover { background: rgba(255, 255, 255, 0.05); }
+.seccion .cuenta { margin-left: auto; font-weight: 500; font-variant-numeric: tabular-nums; }
+.punto-tema { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.lista-nodos .origen { font-size: 11px; color: var(--texto-suave); white-space: nowrap; }
+.lista-nodos button[aria-current="true"] { background: rgba(168, 85, 247, 0.22); }
+.lista-vacia { padding: 12px 6px; font-size: 13px; color: var(--texto-suave); }
+
 /* Estrella pequeña con brillo (text-shadow usa el color actual del texto) */
 .icono-estrella {
   flex: none;
@@ -228,6 +315,14 @@ html, body {
 
   /* Botones más altos: más fáciles de tocar con el dedo */
   .lista-nodos button { padding: 12px 8px; }
+
+  /* La lista ocupa toda la pantalla y el encabezado no se mueve */
+  .lateral { width: 100%; border-right: 0; }
+  body.lista-abierta #encabezado { left: 16px; }
+  .boton-vista { min-height: 40px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lateral, .hoja, #encabezado { transition: none; }
 }
 
 /* ---------- Contenido con saltos de línea (listas "•" de las fuentes) ---------- */

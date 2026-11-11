@@ -14,6 +14,8 @@ Formato de cada nodo (archivo .md):
     fecha: '2026-11-09'
     fuente_url: null
     padres: []
+    categoria: web        # opcional: tema (ver CATEGORIAS); si falta se asigna sola
+    origen: video         # solo fuentes: video | web | pdf (si falta, se deduce del link)
     ---
     Aquí va el contenido en texto libre (Markdown).
 """
@@ -40,6 +42,43 @@ CARPETAS = {
 TIPOS = tuple(CARPETAS)
 
 GRAPH_JSON = RAIZ / "web" / "graph.json"
+
+# Temas para agrupar las ideas en "galaxias" y en la lista de la página.
+# clave: (nombre visible, descripción). La descripción sirve para clasificar
+# solo (por significado, con embeddings) los nodos que no traen categoría.
+CATEGORIAS = {
+    "web": ("Desarrollo web", "desarrollo web, páginas y aplicaciones web, frontend, backend, "
+            "APIs REST, HTML, CSS, JavaScript, frameworks web"),
+    "ia": ("Inteligencia artificial", "inteligencia artificial, machine learning, redes neuronales, "
+           "modelos de lenguaje, chatbots, RAG, visión por computador"),
+    "datos": ("Datos", "análisis de datos, bases de datos, SQL, dashboards, métricas, estadística, "
+              "visualización de datos, ETL"),
+    "ciberseguridad": ("Ciberseguridad", "seguridad informática, hacking ético, vulnerabilidades, "
+                       "criptografía, pentesting, OWASP, malware, redes seguras"),
+    "juegos": ("Videojuegos", "videojuegos, desarrollo de juegos, Unity, Godot, gráficos, "
+               "jugabilidad, juegos"),
+    "movil": ("Apps móviles", "aplicaciones móviles, Android, iOS, Flutter, React Native, celular"),
+    "nube": ("Nube y DevOps", "nube, AWS, Azure, Google Cloud, Docker, Kubernetes, CI/CD, "
+             "despliegue, servidores, DevOps"),
+    "automatizacion": ("Bots y automatización", "bots de Discord o Telegram, automatización de "
+                       "tareas, scripts, scraping, integraciones entre servicios"),
+    "carrera": ("Carrera y portafolio", "carrera profesional, portafolio, CV, entrevistas, "
+                "práctica profesional, búsqueda de empleo, habilidades"),
+    "otros": ("Otros", ""),
+}
+
+# De dónde salió una fuente: video de YouTube, página web o PDF
+ORIGENES = ("video", "web", "pdf")
+
+
+def origen_de_url(url: str | None) -> str:
+    """Deduce el origen de una fuente por su link (para fuentes antiguas sin 'origen')."""
+    u = (url or "").lower()
+    if "youtube.com" in u or "youtu.be" in u:
+        return "video"
+    if u.split("?")[0].endswith(".pdf"):
+        return "pdf"
+    return "web" if u else "pdf"  # sin link solo llegan PDFs subidos desde la página
 PERFIL = RAIZ / "perfil.md"        # contexto sobre ti que se le da a Claude
 PLANES = RAIZ / "planes"           # planes de desarrollo generados por desarrollar.py
 
@@ -72,6 +111,8 @@ class Nodo:
     contenido: str
     fuente_url: str | None = None
     padres: list[str] = field(default_factory=list)
+    categoria: str | None = None  # clave de CATEGORIAS (None = se asigna sola)
+    origen: str | None = None     # solo fuentes: video | web | pdf
     ruta: Path | None = None  # archivo de origen (no se exporta)
 
     def texto_para_embedding(self) -> str:
@@ -88,6 +129,8 @@ class Nodo:
             "fecha": self.fecha,
             "fuente_url": self.fuente_url,
             "padres": self.padres,
+            "categoria": self.categoria,
+            "origen": self.origen,
         }
 
 
@@ -120,6 +163,14 @@ def leer_nodo(ruta: Path, tipo_esperado: str) -> Nodo:
     if not isinstance(padres, list):
         raise ErrorNodo(f"{ruta.name}: 'padres' debe ser una lista")
 
+    # Categoría desconocida: se ignora (y se asigna sola al construir el grafo)
+    categoria = meta.get("categoria")
+    categoria = categoria if categoria in CATEGORIAS else None
+    origen = None
+    if tipo == "fuente":
+        origen = meta.get("origen")
+        origen = origen if origen in ORIGENES else origen_de_url(meta.get("fuente_url"))
+
     return Nodo(
         id=str(meta["id"]),
         titulo=str(meta["titulo"]),
@@ -128,6 +179,8 @@ def leer_nodo(ruta: Path, tipo_esperado: str) -> Nodo:
         contenido=post.content.strip(),
         fuente_url=meta.get("fuente_url") or None,
         padres=[str(p) for p in padres],
+        categoria=categoria,
+        origen=origen,
         ruta=ruta,
     )
 
@@ -176,6 +229,8 @@ def guardar_nodo(
     padres: list[str] | None = None,
     fecha: str | None = None,
     id_nodo: str | None = None,
+    categoria: str | None = None,
+    origen: str | None = None,
 ) -> Path:
     """Crea el archivo .md de un nodo nuevo y devuelve su ruta."""
     if tipo not in CARPETAS:
@@ -197,6 +252,11 @@ def guardar_nodo(
         fuente_url=fuente_url,
         padres=padres or [],
     )
+    # Campos opcionales: solo se escriben si vienen (y son válidos)
+    if categoria in CATEGORIAS:
+        post["categoria"] = categoria
+    if origen in ORIGENES:
+        post["origen"] = origen
     # sort_keys=False: respeta el orden de arriba; allow_unicode: tildes legibles
     texto = frontmatter.dumps(post, sort_keys=False, allow_unicode=True)
     ruta.write_text(texto + "\n", encoding="utf-8")

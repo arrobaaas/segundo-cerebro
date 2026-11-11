@@ -26,14 +26,26 @@ if (window.top !== window.self) {
 
 // --- Configuración visual ------------------------------------
 
-// Un color por tipo de nodo (los mismos de style.css)
+// Un color por "clase" de nodo. Las fuentes se separan según de dónde vienen:
+// video de YouTube, página web o PDF.
 const COLORES = {
   idea: '#a855f7',      // morado
-  fuente: '#f97316',    // naranjo
+  video: '#ef4444',     // rojo
+  web: '#f97316',       // naranjo
+  pdf: '#facc15',       // amarillo
   fusionada: '#22c55e', // verde
 };
-const NOMBRES_TIPO = { idea: 'Idea', fuente: 'Fuente', fusionada: 'Fusionada' };
+const NOMBRES_CLASE = {
+  idea: 'Idea', video: 'Video', web: 'Página web', pdf: 'PDF', fusionada: 'Fusionada',
+};
 const COLOR_DESCONOCIDO = '#888888';
+
+// Color de cada tema (galaxia): para su nebulosa, su nombre y la lista lateral
+const COLORES_TEMA = {
+  web: '#38bdf8', ia: '#a78bfa', datos: '#34d399', ciberseguridad: '#f43f5e',
+  juegos: '#fbbf24', movil: '#2dd4bf', nube: '#60a5fa', automatizacion: '#fb923c',
+  carrera: '#f472b6', otros: '#94a3b8',
+};
 
 const OPACIDAD_ATENUADA = 0.12; // qué tan "apagado" queda lo que no está conectado
 const DISTANCIA_CAMARA = 60;    // distancia al enfocar un nodo sin conexiones
@@ -45,6 +57,7 @@ const vecinosPorId = new Map();   // id -> Set de ids vecinos
 const enlacesPorId = new Map();   // id -> Set de objetos enlace que lo tocan
 
 let seleccionado = null;          // nodo actualmente seleccionado (o null)
+let modoGalaxias = false;         // ¿ideas separadas por tema? (botón 🌌)
 const nodosResaltados = new Set();
 const enlacesResaltados = new Set();
 
@@ -69,7 +82,11 @@ function escaparHtml(texto) {
   }[c]));
 }
 
-const colorDeTipo = (tipo) => COLORES[tipo] ?? COLOR_DESCONOCIDO;
+// Clase visible de un nodo: las fuentes se dividen por origen (video, web, pdf)
+const claseDe = (nodo) => (nodo.tipo === 'fuente' ? (nodo.origen || 'web') : nodo.tipo);
+const colorDe = (nodo) => COLORES[claseDe(nodo)] ?? COLOR_DESCONOCIDO;
+const categoriaDe = (nodo) => nodo.categoria || 'otros';
+const colorTema = (cat) => COLORES_TEMA[cat] ?? COLORES_TEMA.otros;
 
 // --- Índices de vecinos ---------------------------------------
 // Se arman una sola vez al cargar. Así, al hacer clic, saber quiénes son
@@ -166,7 +183,7 @@ function tamanoEstrella(nodo) {
 function crearEstrella(nodo) {
   if (estrellas.has(nodo.id)) return estrellas.get(nodo.id).grupo;
 
-  const color = new THREE.Color(colorDeTipo(nodo.tipo));
+  const color = new THREE.Color(colorDe(nodo));
   // MeshStandardMaterial reacciona a la luz (efecto 3D) y con "emissive"
   // además emite luz propia: así brilla incluso en la cara oscura.
   const material = new THREE.MeshStandardMaterial({
@@ -209,15 +226,17 @@ function animarEstrellas(tiempo) {
     material.emissiveIntensity = base + 0.2 * Math.sin(t * 2.2 + fase);
   }
   requestAnimationFrame(animarEstrellas);
-
-// Para curiosear desde la consola del navegador (F12): cerebro.grafo, etc.
-window.cerebro = { grafo: Grafo, seleccionarNodo, nodosPorId };
 }
 
 function colorEnlace(enlace) {
   // Los enlaces "padre" (fusionada -> origen) van en verde suave
   const base = enlace.tipo === 'padre' ? '#4ade80' : '#c4c4d4';
-  if (!seleccionado) return conAlfa(base, 0.18);
+  if (!seleccionado) {
+    // Con galaxias, los enlaces entre galaxias distintas casi no se ven
+    const entreGalaxias = modoGalaxias &&
+      categoriaDe(nodosPorId.get(idDe(enlace.source))) !== categoriaDe(nodosPorId.get(idDe(enlace.target)));
+    return conAlfa(base, entreGalaxias ? 0.05 : 0.18);
+  }
   return enlacesResaltados.has(enlace) ? conAlfa(base, 0.6) : conAlfa(base, 0.03);
 }
 
@@ -253,7 +272,20 @@ const Grafo = new ForceGraph3D(contenedor, { controlType: 'orbit' })
 
 // Fuerza de los enlaces: los pares más similares quedan más cerca.
 // Así los grupos de ideas relacionadas se forman solos.
-Grafo.d3Force('link').distance((e) => 25 + (1 - (e.similitud ?? 0.6)) * 120);
+Grafo.d3Force('link')
+  .distance((e) => 25 + (1 - (e.similitud ?? 0.6)) * 120)
+  .strength(fuerzaEnlace);
+
+// Igual que la fuerza por defecto de d3 (1 / enlaces del nodo con menos enlaces),
+// pero en modo galaxias los enlaces ENTRE galaxias casi no tiran: así cada
+// galaxia se separa aunque tenga ideas conectadas con otra.
+function fuerzaEnlace(e) {
+  const a = idDe(e.source);
+  const b = idDe(e.target);
+  const base = 1 / Math.max(1, Math.min(enlacesPorId.get(a)?.size ?? 1, enlacesPorId.get(b)?.size ?? 1));
+  if (modoGalaxias && categoriaDe(nodosPorId.get(a)) !== categoriaDe(nodosPorId.get(b))) return base * 0.03;
+  return base;
+}
 
 // Bloom: efecto de post-procesado que hace que lo brillante "irradie" un halo
 // de luz alrededor. Parámetros: intensidad, radio del halo y umbral (solo
@@ -285,7 +317,10 @@ function encuadrar() {
   Grafo.zoomToFit(800, 40);
 }
 
+let encuadrarAlParar = false; // al juntar/separar galaxias, encuadrar cuando se acomoden
+
 Grafo.onEngineTick(() => {
+  if (modoGalaxias) moverDecoracionGalaxias();
   if (yaEncuadrado) return;
   const caja = Grafo.getGraphBbox();
   if (!caja) return; // todavía no hay nodos
@@ -293,7 +328,11 @@ Grafo.onEngineTick(() => {
   if (tamano > 10) encuadrar();
 });
 // Respaldo: si el grafo es diminuto (ej. un solo nodo), encuadramos al final
-Grafo.onEngineStop(() => { if (!yaEncuadrado) encuadrar(); });
+Grafo.onEngineStop(() => {
+  if (!yaEncuadrado) encuadrar();
+  else if (encuadrarAlParar && !seleccionado) Grafo.zoomToFit(900, 60);
+  encuadrarAlParar = false;
+});
 
 // Ajustar el tamaño al girar el celular o cambiar el tamaño de la ventana
 window.addEventListener('resize', () => {
@@ -306,6 +345,11 @@ window.addEventListener('resize', () => {
 // Vuelve a pedir colores/anchos a la librería después de cambiar el resaltado
 function refrescarEstilos() {
   actualizarEstrellas();
+  // Con una idea seleccionada, las galaxias se apagan para no distraer
+  for (const { nebulosa, etiqueta } of decoracionGalaxia.values()) {
+    nebulosa.material.opacity = seleccionado ? 0.3 : 1;
+    etiqueta.material.opacity = seleccionado ? 0.35 : 0.9;
+  }
   Grafo.linkColor(Grafo.linkColor())
     .linkWidth(Grafo.linkWidth());
 }
@@ -320,6 +364,7 @@ function seleccionarNodo(nodo) {
   for (const enlace of enlacesPorId.get(nodo.id)) enlacesResaltados.add(enlace);
 
   refrescarEstilos();
+  marcarEnLista();
   enfocarCamara(nodo);
   hojaAgregar?.cerrar(); // si estaba abierta la hoja "Agregar fuente", la cerramos
   mostrarPanel(nodo);
@@ -331,6 +376,7 @@ function limpiarSeleccion() {
   nodosResaltados.clear();
   enlacesResaltados.clear();
   refrescarEstilos();
+  marcarEnLista();
   ocultarPanel();
 }
 
@@ -364,11 +410,14 @@ const el = (id) => document.getElementById(id);
 function mostrarPanel(nodo) {
   // Tipo (chip de color)
   const chip = el('panel-tipo');
-  chip.textContent = NOMBRES_TIPO[nodo.tipo] ?? nodo.tipo;
-  chip.style.background = colorDeTipo(nodo.tipo);
+  chip.textContent = NOMBRES_CLASE[claseDe(nodo)] ?? nodo.tipo;
+  chip.style.background = colorDe(nodo);
 
   el('panel-titulo').textContent = nodo.titulo;
-  el('panel-meta').textContent = nodo.fecha ? `📅 ${nodo.fecha}` : '';
+  el('panel-meta').textContent = [
+    nodo.fecha ? `📅 ${nodo.fecha}` : '',
+    `🗂 ${nombreTema(categoriaDe(nodo))}`,
+  ].filter(Boolean).join(' · ');
 
   // Link a la fuente: solo http/https, para que nadie cuele un "javascript:..."
   const url = el('panel-url');
@@ -421,7 +470,7 @@ function llenarLista(ul, items) {
     const boton = document.createElement('button');
     boton.type = 'button';
 
-    const punto = iconoEstrella(colorDeTipo(nodo.tipo));
+    const punto = iconoEstrella(colorDe(nodo));
 
     const nombre = document.createElement('span');
     nombre.className = 'nombre';
@@ -452,15 +501,28 @@ function ocultarPanel() {
 // En celular (pantalla angosta) el panel es una hoja que cubre la mitad de abajo.
 const esMovil = () => window.innerWidth <= 640;
 
-// setViewOffset "corre" la imagen sin mover la cámara: le decimos a Three.js que
-// dibuje como si la pantalla empezara un 25% más abajo, así el centro de la escena
-// queda en la mitad de arriba, visible sobre el panel. Los clics siguen funcionando
-// porque la detección de nodos usa esta misma proyección.
-function ajustarVistaPanel(abierto) {
+// setViewOffset "corre" la imagen sin mover la cámara. En celular, con el panel
+// abierto, dibujamos como si la pantalla empezara un 25% más abajo: el centro de
+// la escena queda en la mitad de arriba, visible sobre el panel. En escritorio
+// corremos la imagen hacia el espacio libre entre la lista (izquierda) y el
+// panel (derecha). Los clics siguen funcionando porque la detección de nodos
+// usa esta misma proyección.
+const ANCHO_LISTA = 300; // = --ancho-lateral en style.css
+const ANCHO_PANEL = 380; // = ancho de .hoja en style.css
+
+function ajustarVistaPanel(panelAbierto = panel.classList.contains('abierto')) {
   const camara = Grafo.camera();
   const W = window.innerWidth;
   const H = window.innerHeight;
-  if (abierto && esMovil()) camara.setViewOffset(W, H, 0, H * 0.25, W, H);
+  let x = 0;
+  let y = 0;
+  if (esMovil()) {
+    if (panelAbierto) y = H * 0.25;
+  } else {
+    if (document.getElementById('lista').classList.contains('abierto')) x -= ANCHO_LISTA / 2;
+    if (panelAbierto) x += ANCHO_PANEL / 2;
+  }
+  if (x || y) camara.setViewOffset(W, H, x, y, W, H);
   else camara.clearViewOffset();
   camara.updateProjectionMatrix();
 }
@@ -489,7 +551,7 @@ function contextoNodo(nodo) {
 
   let texto = '';
   if (meta.perfil) texto += `Mi perfil:\n${meta.perfil}\n\n`;
-  texto += `Idea de mi "segundo cerebro" (${NOMBRES_TIPO[nodo.tipo] ?? nodo.tipo}): ${nodo.titulo}\n`;
+  texto += `Idea de mi "segundo cerebro" (${NOMBRES_CLASE[claseDe(nodo)] ?? nodo.tipo}): ${nodo.titulo}\n`;
   texto += `${nodo.contenido}\n`;
   if (nodo.fuente_url) texto += `Fuente: ${nodo.fuente_url}\n`;
   if (conexiones.length) {
@@ -669,14 +731,289 @@ function iconoEstrella(color) {
 function construirLeyenda(nodos) {
   const leyenda = el('leyenda');
   leyenda.replaceChildren(); // se vuelve a construir al agregar un nodo
-  for (const [tipo, color] of Object.entries(COLORES)) {
-    const cantidad = nodos.filter((n) => n.tipo === tipo).length;
+  for (const [clase, color] of Object.entries(COLORES)) {
+    const cantidad = nodos.filter((n) => claseDe(n) === clase).length;
     const li = document.createElement('li');
     const punto = iconoEstrella(color);
-    li.append(punto, `${NOMBRES_TIPO[tipo]} (${cantidad})`);
+    li.append(punto, `${NOMBRES_CLASE[clase]} (${cantidad})`);
     leyenda.appendChild(li);
   }
 }
+
+// --- Preferencias de vista (se recuerdan en este navegador) ------------
+const CLAVE_VISTA = 'segundo-cerebro.vista';
+function leerVista() {
+  try { return JSON.parse(localStorage.getItem(CLAVE_VISTA)) ?? {}; } catch { return {}; }
+}
+function guardarVista(cambios) {
+  try { localStorage.setItem(CLAVE_VISTA, JSON.stringify({ ...leerVista(), ...cambios })); } catch { /* sin almacenamiento */ }
+}
+
+const nombreTema = (cat) => meta.categorias?.[cat] ?? cat;
+
+// Temas que tienen al menos un nodo, en el orden definido en scripts/cerebro.py
+function temasPresentes() {
+  const orden = Object.keys(meta.categorias ?? {});
+  const posicion = (c) => (orden.includes(c) ? orden.indexOf(c) : orden.length);
+  const temas = new Set([...nodosPorId.values()].map(categoriaDe));
+  return [...temas].sort((a, b) => posicion(a) - posicion(b));
+}
+
+// --- Galaxias: separar las ideas por tema --------------------------
+// Cada tema tiene un "centro" en el espacio y una fuerza suave empuja a sus
+// nodos hacia él. Encima dibujamos una nebulosa de color y el nombre del tema.
+const centrosGalaxia = new Map(); // tema -> { x, y, z }
+const decoracionGalaxia = new Map(); // tema -> { nebulosa, etiqueta }
+
+function calcularCentros() {
+  centrosGalaxia.clear();
+  const temas = temasPresentes();
+  const k = temas.length;
+  const radio = k <= 1 ? 0 : 60 + 32 * k; // más temas, anillo más grande
+  // El anillo se estira según la forma de la pantalla (ancha o vertical)
+  const vertical = window.innerWidth < window.innerHeight;
+  const [fx, fy] = vertical ? [0.6, 1] : [1, 0.75];
+  temas.forEach((tema, i) => {
+    const angulo = (i / k) * Math.PI * 2 - Math.PI / 2;
+    centrosGalaxia.set(tema, {
+      x: Math.cos(angulo) * radio * fx,
+      y: Math.sin(angulo) * radio * fy,
+      z: (i % 2 ? -1 : 1) * radio * 0.15, // un poco de profundidad
+    });
+  });
+}
+
+// Fuerza de d3 escrita a mano: en cada paso acerca cada nodo al centro de su galaxia
+function fuerzaGalaxias() {
+  let nodos = [];
+  function fuerza(alfa) {
+    const k = 0.12 * alfa;
+    for (const n of nodos) {
+      const c = centrosGalaxia.get(categoriaDe(n));
+      if (!c) continue;
+      n.vx += (c.x - n.x) * k;
+      n.vy += (c.y - n.y) * k;
+      n.vz += (c.z - n.z) * k;
+    }
+  }
+  fuerza.initialize = (lista) => { nodos = lista; };
+  return fuerza;
+}
+
+// Texto como imagen (sprite): siempre mira a la cámara
+function crearEtiqueta(texto, color) {
+  const lienzo = document.createElement('canvas');
+  const ctx = lienzo.getContext('2d');
+  const fuente = '600 44px system-ui, -apple-system, "Segoe UI", sans-serif';
+  ctx.font = fuente;
+  lienzo.width = Math.ceil(ctx.measureText(texto).width) + 48;
+  lienzo.height = 80;
+  ctx.font = fuente; // cambiar el tamaño del lienzo borra la configuración
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  // Color del tema y sin brillo propio: el efecto bloom ya le agrega halo, y si
+  // el texto fuera blanco puro el halo lo dejaría ilegible.
+  ctx.fillStyle = conAlfa(color, 0.75);
+  ctx.fillText(texto, lienzo.width / 2, lienzo.height / 2);
+  const textura = new THREE.CanvasTexture(lienzo);
+  textura.colorSpace = THREE.SRGBColorSpace;
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: textura, transparent: true, depthWrite: false, opacity: 0.85,
+  }));
+  sprite.userData.proporcion = lienzo.width / lienzo.height; // para escalarlo sin deformar
+  return sprite;
+}
+
+// Nebulosa: un brillo difuso del color del tema detrás de sus estrellas
+function crearNebulosa(color) {
+  const lienzo = document.createElement('canvas');
+  lienzo.width = lienzo.height = 256;
+  const ctx = lienzo.getContext('2d');
+  // Degradado suave (muchas paradas) para que no se note el borde del disco
+  const degradado = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+  degradado.addColorStop(0, conAlfa(color, 0.16));
+  degradado.addColorStop(0.3, conAlfa(color, 0.09));
+  degradado.addColorStop(0.6, conAlfa(color, 0.03));
+  degradado.addColorStop(1, conAlfa(color, 0));
+  ctx.fillStyle = degradado;
+  ctx.fillRect(0, 0, 256, 256);
+  const textura = new THREE.CanvasTexture(lienzo);
+  textura.colorSpace = THREE.SRGBColorSpace;
+  return new THREE.Sprite(new THREE.SpriteMaterial({
+    map: textura, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  }));
+}
+
+function crearDecoracionGalaxias() {
+  quitarDecoracionGalaxias();
+  for (const tema of centrosGalaxia.keys()) {
+    const color = colorTema(tema);
+    const nebulosa = crearNebulosa(color);
+    const etiqueta = crearEtiqueta(nombreTema(tema), color);
+    Grafo.scene().add(nebulosa, etiqueta);
+    decoracionGalaxia.set(tema, { nebulosa, etiqueta });
+  }
+  moverDecoracionGalaxias();
+}
+
+function quitarDecoracionGalaxias() {
+  for (const { nebulosa, etiqueta } of decoracionGalaxia.values()) {
+    for (const sprite of [nebulosa, etiqueta]) {
+      Grafo.scene().remove(sprite);
+      sprite.material.map.dispose();
+      sprite.material.dispose();
+    }
+  }
+  decoracionGalaxia.clear();
+}
+
+// La nebulosa y el nombre siguen al grupo real de estrellas (centro y tamaño)
+function moverDecoracionGalaxias() {
+  const grupos = new Map();
+  for (const n of nodosPorId.values()) {
+    if (n.x == null) continue;
+    const tema = categoriaDe(n);
+    if (!grupos.has(tema)) grupos.set(tema, []);
+    grupos.get(tema).push(n);
+  }
+  for (const [tema, { nebulosa, etiqueta }] of decoracionGalaxia) {
+    const nodos = grupos.get(tema);
+    if (!nodos?.length) continue;
+    const c = { x: 0, y: 0, z: 0 };
+    for (const n of nodos) { c.x += n.x; c.y += n.y; c.z += n.z; }
+    c.x /= nodos.length; c.y /= nodos.length; c.z /= nodos.length;
+    let radio = 0;
+    for (const n of nodos) radio = Math.max(radio, Math.hypot(n.x - c.x, n.y - c.y, n.z - c.z));
+    radio += 14;
+    nebulosa.position.set(c.x, c.y, c.z);
+    nebulosa.scale.setScalar(radio * 2.4);
+    // El nombre crece con la galaxia, así se lee desde lejos
+    const alto = Math.min(18, Math.max(8, radio * 0.2));
+    etiqueta.scale.set(alto * etiqueta.userData.proporcion, alto, 1);
+    etiqueta.position.set(c.x, c.y + radio + alto, c.z);
+  }
+}
+
+function aplicarGalaxias(activar, animar = true) {
+  modoGalaxias = activar;
+  guardarVista({ galaxias: activar });
+  const boton = el('btn-galaxias');
+  boton.setAttribute('aria-pressed', String(activar));
+  boton.textContent = activar ? '✦ Juntar ideas' : '🌌 Separar en galaxias';
+
+  if (activar) {
+    calcularCentros();
+    Grafo.d3Force('galaxias', fuerzaGalaxias());
+    crearDecoracionGalaxias();
+  } else {
+    Grafo.d3Force('galaxias', null);
+    quitarDecoracionGalaxias();
+  }
+  Grafo.d3Force('link').strength(fuerzaEnlace); // recalcula las fuerzas de los enlaces
+  refrescarEstilos();
+  if (animar) {
+    encuadrarAlParar = true;
+    Grafo.d3ReheatSimulation(); // vuelve a mover la física para que se acomoden
+  }
+}
+
+el('btn-galaxias').addEventListener('click', () => aplicarGalaxias(!modoGalaxias));
+
+// --- Lista lateral: ideas agrupadas por tema ----------------------
+const lista = el('lista');
+const temasCerrados = new Set(leerVista().temasCerrados ?? []);
+
+function abrirLista(abrir) {
+  lista.classList.toggle('abierto', abrir);
+  lista.setAttribute('aria-hidden', String(!abrir));
+  document.body.classList.toggle('lista-abierta', abrir);
+  el('btn-lista').setAttribute('aria-expanded', String(abrir));
+  ajustarVistaPanel();
+  if (!esMovil()) guardarVista({ lista: abrir }); // en celular empieza siempre cerrada
+  if (abrir && !esMovil()) el('buscar').focus({ preventScroll: true });
+}
+
+// Para buscar sin importar mayúsculas ni tildes ("logica" encuentra "Lógica")
+const normalizar = (texto) => String(texto ?? '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+
+function construirLista() {
+  const filtro = normalizar(el('buscar').value.trim());
+  const contenedor = el('lista-secciones');
+  contenedor.replaceChildren();
+  let total = 0;
+
+  for (const tema of temasPresentes()) {
+    const nodos = [...nodosPorId.values()]
+      .filter((n) => categoriaDe(n) === tema)
+      .filter((n) => !filtro || normalizar(`${n.titulo} ${n.contenido}`).includes(filtro))
+      .sort((a, b) => a.titulo.localeCompare(b.titulo, 'es'));
+    if (!nodos.length) continue;
+    total += nodos.length;
+
+    const seccion = document.createElement('details');
+    seccion.className = 'seccion';
+    seccion.open = Boolean(filtro) || !temasCerrados.has(tema); // al buscar, todo abierto
+    seccion.addEventListener('toggle', () => {
+      if (filtro) return;
+      if (seccion.open) temasCerrados.delete(tema); else temasCerrados.add(tema);
+      guardarVista({ temasCerrados: [...temasCerrados] });
+    });
+
+    const resumen = document.createElement('summary');
+    const punto = document.createElement('span');
+    punto.className = 'punto-tema';
+    punto.style.background = colorTema(tema);
+    const cuenta = document.createElement('span');
+    cuenta.className = 'cuenta';
+    cuenta.textContent = String(nodos.length);
+    resumen.append(punto, nombreTema(tema), cuenta);
+
+    const ul = document.createElement('ul');
+    ul.className = 'lista-nodos';
+    for (const nodo of nodos) {
+      const boton = document.createElement('button');
+      boton.type = 'button';
+      boton.dataset.id = nodo.id;
+      const nombre = document.createElement('span');
+      nombre.className = 'nombre';
+      nombre.textContent = nodo.titulo;
+      const origen = document.createElement('span');
+      origen.className = 'origen';
+      origen.textContent = NOMBRES_CLASE[claseDe(nodo)] ?? '';
+      boton.append(iconoEstrella(colorDe(nodo)), nombre, origen);
+      boton.addEventListener('click', () => {
+        seleccionarNodo(nodo);
+        if (esMovil()) abrirLista(false); // en celular la lista tapa todo: la cerramos
+      });
+      const li = document.createElement('li');
+      li.appendChild(boton);
+      ul.appendChild(li);
+    }
+    seccion.append(resumen, ul);
+    contenedor.appendChild(seccion);
+  }
+
+  if (!total) {
+    const vacio = document.createElement('p');
+    vacio.className = 'lista-vacia';
+    vacio.textContent = filtro ? 'Ninguna idea coincide con la búsqueda.' : 'Todavía no hay ideas.';
+    contenedor.appendChild(vacio);
+  }
+  marcarEnLista();
+}
+
+// Resalta en la lista el nodo seleccionado en el grafo
+function marcarEnLista() {
+  for (const boton of el('lista-secciones').querySelectorAll('button[data-id]')) {
+    const actual = seleccionado?.id === boton.dataset.id;
+    boton.setAttribute('aria-current', String(actual));
+    if (actual && lista.classList.contains('abierto')) boton.scrollIntoView({ block: 'nearest' });
+  }
+}
+
+el('btn-lista').addEventListener('click', () => abrirLista(!lista.classList.contains('abierto')));
+el('cerrar-lista').addEventListener('click', () => abrirLista(false));
+el('buscar').addEventListener('input', construirLista);
 
 // --- Carga de datos -------------------------------------------
 
@@ -691,6 +1028,15 @@ async function cargar() {
     construirIndices(datos);
     construirLeyenda(datos.nodes);
     Grafo.graphData(datos);
+    construirLista();
+
+    // Restaurar la vista que tenías la última vez
+    const vista = leerVista();
+    if (vista.lista && !esMovil()) abrirLista(true);
+    if (vista.galaxias) {
+      aplicarGalaxias(true, false);
+      encuadrarAlParar = true; // volver a encuadrar cuando las galaxias se acomoden
+    }
 
     // Distancia inicial razonable según la cantidad de nodos (sin animación).
     // Es un "piso" por si el encuadre suave no alcanza a correr; con más

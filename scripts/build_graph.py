@@ -25,7 +25,7 @@ import argparse
 import json
 import sys
 
-from cerebro import GRAPH_JSON, ErrorNodo, Nodo, leer_nodos, leer_perfil, ruta_plan
+from cerebro import CATEGORIAS, GRAPH_JSON, ErrorNodo, Nodo, leer_nodos, leer_perfil, ruta_plan
 
 MODELO = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 # Empezamos en 0.6, pero con este modelo y textos cortos en español casi
@@ -37,7 +37,9 @@ PISO_VECINO = 0.3
 
 
 def calcular_similitudes(nodos: list[Nodo]):
-    """Devuelve la matriz de similitud coseno entre todos los nodos (N x N)."""
+    """Devuelve la matriz de similitud coseno entre todos los nodos (N x N).
+
+    De paso, a los nodos sin categoría les asigna la más parecida (ver asignar_categorias)."""
     # Importamos aquí y no arriba: cargar PyTorch tarda unos segundos, y así
     # los errores simples (ej. un .md mal escrito) aparecen al instante.
     from sentence_transformers import SentenceTransformer
@@ -50,7 +52,27 @@ def calcular_similitudes(nodos: list[Nodo]):
     # normalize_embeddings=True deja cada vector con largo 1. Con vectores
     # normalizados, la similitud coseno es simplemente el producto punto.
     vectores = modelo.encode(textos, normalize_embeddings=True, show_progress_bar=False)
+    asignar_categorias(nodos, vectores, modelo)
     return vectores @ vectores.T
+
+
+# Si ningún tema se parece al menos esto, el nodo va a "otros"
+SIMILITUD_MINIMA_CATEGORIA = 0.15
+
+
+def asignar_categorias(nodos: list[Nodo], vectores, modelo) -> None:
+    """Pone categoría a los nodos que no la tienen: la de descripción más parecida."""
+    sin_categoria = [i for i, n in enumerate(nodos) if not n.categoria]
+    if not sin_categoria:
+        return
+    claves = [c for c, (_, desc) in CATEGORIAS.items() if desc]
+    descripciones = modelo.encode([f"{CATEGORIAS[c][0]}: {CATEGORIAS[c][1]}" for c in claves],
+                                  normalize_embeddings=True, show_progress_bar=False)
+    sim = vectores[sin_categoria] @ descripciones.T
+    for fila, i in enumerate(sin_categoria):
+        mejor = int(sim[fila].argmax())
+        nodos[i].categoria = claves[mejor] if sim[fila][mejor] >= SIMILITUD_MINIMA_CATEGORIA else "otros"
+        print(f"  🗂  {nodos[i].id} → {CATEGORIAS[nodos[i].categoria][0]} (automática)")
 
 
 def construir_enlaces(nodos: list[Nodo], sim, umbral: float, piso: float = PISO_VECINO) -> list[dict]:
@@ -167,6 +189,8 @@ def main(argv: list[str] | None = None) -> int:
             "umbral": args.umbral,
             # La web usa el perfil para armar los prompts de "Desarrollar con Claude"
             "perfil": leer_perfil(),
+            # Nombres de los temas, en el orden en que se muestran
+            "categorias": {clave: nombre for clave, (nombre, _) in CATEGORIAS.items()},
         },
         "nodes": [nodo_para_web(n) for n in nodos],
         "links": enlaces,

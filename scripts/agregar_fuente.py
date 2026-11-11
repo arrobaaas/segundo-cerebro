@@ -31,7 +31,9 @@ import urllib.request
 
 from pydantic import BaseModel, Field, ValidationError
 
-from cerebro import RAIZ, guardar_nodo, leer_nodos, leer_perfil
+from typing import Literal
+
+from cerebro import CATEGORIAS, RAIZ, guardar_nodo, leer_nodos, leer_perfil
 from claude_cliente import ErrorClaude, pedir_estructurado, salir_con_error
 from manual import entregar_prompt, extraer_json, recibir_respuesta
 
@@ -141,6 +143,10 @@ class ResumenFuente(BaseModel):
     aprendizajes: list[str] = Field(description="3 a 5 aprendizajes concretos y técnicos")
     ideas_proyecto: list[IdeaProyecto] = Field(description="2 o 3 ideas de proyecto viables inspiradas en la fuente")
     tecnologias: list[str] = Field(description="tecnologías, herramientas o conceptos clave mencionados")
+    # Literal = la API solo acepta una de estas claves (structured outputs)
+    categoria: Literal[tuple(CATEGORIAS)] = Field(description=(
+        "tema principal de la fuente, para agruparla en el grafo. Opciones: "
+        + "; ".join(f"{clave} = {nombre}" for clave, (nombre, _) in CATEGORIAS.items())))
 
 
 SYSTEM_RESUMEN = """Eres un mentor de carrera para un estudiante de Ingeniería en Informática.
@@ -189,7 +195,8 @@ después, con exactamente esta forma:
   "ideas_proyecto": [
     {"nombre": "nombre corto", "descripcion": "qué hace y qué problema resuelve", "mvp": "versión mínima construible en pocas semanas"}
   ],
-  "tecnologias": ["tecnología o concepto clave", "..."]
+  "tecnologias": ["tecnología o concepto clave", "..."],
+  "categoria": "una de: web, ia, datos, ciberseguridad, juegos, movil, nube, automatizacion, carrera, otros"
 }
 ```
 
@@ -259,7 +266,8 @@ def agregar_pdf(pdf: bytes, nombre: str, url: str | None = None) -> int:
         r = pedir_estructurado(SYSTEM_RESUMEN.format(perfil=leer_perfil()), mensaje, ResumenFuente)
     except ErrorClaude as e:
         return salir_con_error(e)
-    ruta = guardar_nodo("fuente", r.titulo, armar_contenido(r), fuente_url=url)
+    ruta = guardar_nodo("fuente", r.titulo, armar_contenido(r), fuente_url=url,
+                        categoria=r.categoria, origen="pdf")
     print(f"✔ Fuente creada: {ruta.relative_to(RAIZ)} — {r.titulo}")
     return 0
 
@@ -317,7 +325,8 @@ def main(argv: list[str] | None = None) -> int:
         return salir_con_error(e)
 
     # 3) Guardar el nodo
-    ruta = guardar_nodo("fuente", r.titulo, armar_contenido(r), fuente_url=url)
+    ruta = guardar_nodo("fuente", r.titulo, armar_contenido(r), fuente_url=url,
+                        categoria=r.categoria, origen="video" if video_id else "web")
     print(f"✔ Fuente creada: {ruta.relative_to(RAIZ)} — {r.titulo}")
     for idea in r.ideas_proyecto:
         print(f"  💡 {idea.nombre}")

@@ -5,6 +5,8 @@ tipo: fuente
 fecha: '2026-10-06'
 fuente_url: https://example.com/portafolio-junior
 padres: []
+categoria: carrera
+origen: web
 ---
 
 Los reclutadores valoran pocos proyectos terminados y bien explicados por sobre muchos tutoriales copiados. Recomienda un README claro, una demo en vivo y contar qué problema real resuelve cada proyecto.
