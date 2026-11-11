@@ -1,0 +1,4 @@
+{
+  "url": "javascript:alert(1)",
+  "error": "El link no es válido (debe empezar con http:// o https://)."
+}
