@@ -410,7 +410,7 @@ export function iniciarAgregar({ obtenerNodos, alAbrir, avisar }) {
   }
 
   // Videos: los procesa tu computador. No hay pasos que seguir en GitHub, así que
-  // el avance se estima con el tiempo (normalmente ~1 min) hasta que llegue el resultado.
+  // el avance se estima con el tiempo (~45 s: transcripción + Claude + grafo) hasta el resultado.
   async function seguirVideo({ nombre }) {
     const inicio = Date.now();
     while (Date.now() - inicio < 30 * 60 * 1000) {
@@ -418,12 +418,14 @@ export function iniciarAgregar({ obtenerNodos, alAbrir, avisar }) {
       const fin = await resultadoDe(nombre);
       if (fin) return fin;
       const seg = (Date.now() - inicio) / 1000;
-      const texto = seg < 35
+      const texto = seg < 12
         ? 'Esperando a tu computador…'
-        : seg < 180
-          ? 'Tu computador está viendo la transcripción y Claude la analiza…'
+        : seg < 45
+          ? 'Claude está analizando el video y creando ideas nuevas…'
+          : seg < 180
+          ? 'Conectando las ideas nuevas con las que ya tienes…'
           : 'Sigue en cola: ¿está encendido tu computador? (se procesará apenas lo esté)';
-      progreso(6 + 60 * (1 - Math.exp(-seg / 50)), texto); // se acerca a 66% sin pasarse
+      progreso(6 + 74 * (1 - Math.exp(-seg / 25)), texto); // se acerca a 80% sin pasarse
     }
     return { enCola: true };
   }
@@ -518,14 +520,14 @@ export function iniciarAgregar({ obtenerNodos, alAbrir, avisar }) {
         return;
       }
       // Listo en el repo; falta que GitHub reconstruya y publique el grafo nuevo
-      // (para videos, la Action recién empieza: ~1-2 min más)
-      const desde = envio.esVideo ? 70 : 92;
-      const duracion = envio.esVideo ? 150 : 90;
+      // (los videos llegan con el grafo ya construido: solo falta GitHub Pages, ~40 s)
+      const desde = envio.esVideo ? 82 : 92;
+      const duracion = envio.esVideo ? 45 : 90;
       const inicio = Date.now();
       while (Date.now() - inicio < 6 * 60 * 1000) {
         const seg = (Date.now() - inicio) / 1000;
         progreso(desde + (99 - desde) * Math.min(1, seg / duracion),
-          envio.esVideo ? 'Conectando con tus otras ideas y publicando…' : 'Publicando las estrellas nuevas…');
+          'Publicando las estrellas nuevas…');
         if (fin.ids.length === 0 || await grafoPublicado(fin.ids)) break;
         await esperar(5000);
       }
