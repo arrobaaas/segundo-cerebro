@@ -2,7 +2,7 @@
   "meta": {
     "modelo": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
     "umbral": 0.45,
-    "perfil": "- Carrera: Ingeniería en Informática (estudiante).\n- Año / semestre: (complétalo)\n- Tecnologías que ya manejo: Python, HTML, CSS, JavaScript, Git. (ajústalo)\n- Tecnologías que quiero aprender: (complétalo, ej. bases de datos, APIs, nube, IA)\n- Tiempo para proyectos personales: (ej. 5-8 horas a la semana)\n- Área que me interesa: (ej. desarrollo web, datos, IA, ciberseguridad, videojuegos)\n- Objetivo: construir proyectos viables que me sirvan para aprender, armar mi\n  portafolio y prepararme para mi práctica profesional y mi primer trabajo."
+    "perfil": "- Carrera: Ingeniería Civil en Computación e Informática, 4.º año.\n- Tecnologías que manejo: Python, Java, JavaScript, HTML, CSS, Git, bases de datos\n  (SQL), APIs, nube e Inteligencia Artificial.\n- Áreas que me interesan: desarrollo web, datos, IA y ciberseguridad.\n- Objetivo: construir proyectos viables que me sirvan para aprender, armar mi\n  portafolio y prepararme para mi práctica profesional y mi primer trabajo.\n- Qué tipo de proyecto busco: uno grande y enfocado (no varios chicos), que combine\n  al menos dos de mis áreas de interés, use prácticas de la industria (Git, pruebas,\n  CI/CD, seguridad, despliegue en la nube) y se desarrolle en fases claras, cada una\n  con un entregable que funcione."
   },
   "nodes": [
     {
